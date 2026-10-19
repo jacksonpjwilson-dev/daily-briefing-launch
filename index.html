@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Daily Briefing: your whole day, one scroll</title>
+<title>Daily Briefing: your whole day, one home screen</title>
 <meta name="description" content="Weather, aviation, shifts, workouts, calendar, tasks and the day's focus — assembled every morning into one phone-friendly briefing.">
 <meta name="theme-color" content="#070b14">
-<meta property="og:title" content="Daily Briefing: your whole day, one scroll">
+<meta property="og:title" content="Daily Briefing: your whole day, one home screen">
 <meta property="og:description" content="Weather, aviation, shifts, workouts, calendar and focus in one morning briefing.">
 <meta property="og:image" content="https://jacksonpjwilson-dev.github.io/daily-briefing-launch/og.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -15,13 +15,13 @@
 <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="preload" as="image" href="shots/today.webp">
-<link rel="stylesheet" href="styles.css?v=1">
+<link rel="preload" as="image" href="shots/briefing.webp">
+<link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
 <header class="nav"><a class="brand" href="#top"><img src="icon-180.png" alt="" width="28" height="28">Daily Briefing</a>
-<nav><a href="#weather">Weather</a><a href="#aviation">Aviation</a><a href="#work">Work</a><a href="#day">Day</a><a href="#more">More</a></nav>
-<a class="pill sm" href="https://jacksonpjwilson-dev.github.io/briefing/">Open the live app</a></header>
+<nav><a href="#briefing">Briefing</a><a href="#schedule">Schedule</a><a href="#sections">Sections</a><a href="#gestures">Gestures</a><a href="#colourways">Colourways</a></nav>
+<a class="pill sm" href="https://jacksonpjwilson-dev.github.io/briefing/preview-widget/">Try the preview</a></header>
 
 <main id="top">
 <section class="hero">
@@ -29,67 +29,75 @@
   <div class="hero-copy rv">
     <img class="appicon" src="icon-512.png" alt="Daily Briefing app icon" width="112" height="112">
     <p class="kicker">Introducing Daily Briefing</p>
-    <h1>Your whole day.<br><span class="grad">One scroll.</span></h1>
-    <p class="lede">Weather, METAR and TAF, shifts, aircraft movements, the workout, calendar, tasks and today's focus — assembled every morning into one phone-ready briefing.</p>
-    <div class="ctas"><a class="pill" href="https://jacksonpjwilson-dev.github.io/briefing/">Open the live briefing</a><a class="pill ghost" href="#weather">See what's inside ↓</a></div>
+    <h1>Your whole day.<br><span class="grad">One home screen.</span></h1>
+    <p class="lede">Your briefing and Cal’s combined schedule in one app. Swipe between widget pages, tap any line to zoom into its full section, then swipe up to go home.</p>
+    <div class="ctas"><a class="pill" href="https://jacksonpjwilson-dev.github.io/briefing/preview-widget/">Open the live preview</a><a class="pill ghost" href="#briefing">See how it works ↓</a></div>
     <div class="storewrap"><span class="store" role="img" aria-label="Coming soon on the App Store"><svg class="apl" viewBox="0 0 17 20" aria-hidden="true"><path fill="currentColor" d="M14.1 10.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9C3.6 4.8 2 5.8 1.1 7.4c-1.8 3.2-.5 7.9 1.3 10.5.9 1.3 1.9 2.7 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.6 1-1.5 1.4-2.9 1.4-3-.1 0-2.7-1-2.7-4.3zM11.6 3c.7-.9 1.2-2 1-3.2-1 0-2.3.7-3 1.6-.7.8-1.2 2-1.1 3.1 1.2.1 2.3-.6 3.1-1.5z"/></svg><span><small>Coming soon on the</small><b>App Store</b></span></span></div>
   </div>
-  <div class="hero-phone rv d2"><div class="phone xl"><div class="scr"><img src="shots/today.webp" alt="Daily Briefing home screen" fetchpriority="high"></div><i class="island"></i></div></div>
+  <div class="hero-phone rv d2"><div class="phone xl"><div class="scr"><img src="shots/briefing.webp" alt="Briefing home: a roll-up of every section" fetchpriority="high"></div><i class="island"></i></div></div>
 </section>
 
-<section id="weather" class="feature">
-  <div class="copy rv"><p class="kicker">Weather</p><h2>Local conditions,<br>before you step out.</h2><p>Temperature, sky, wind and precip for home base — written in plain language, not just icons.</p>
-  <ul class="ticks"><li>Now, high and low at a glance</li><li>Wind with gusts</li><li>A short narrative for the rest of the day</li></ul></div>
-  <div class="stage rv d1"><div class="phone"><div class="scr"><img src="shots/weather.webp" alt="Weather card" loading="lazy"></div><i class="island"></i></div></div>
+<section id="briefing" class="feature">
+  <div class="copy rv"><p class="kicker">The briefing</p><h2>A summary of<br>the whole app.</h2><p>Home is built only from the app's sections. Every line carries a small "from Schedule", "from Weather" or "from Work" label, and tapping it opens that section.</p>
+  <ul class="ticks"><li>Today's schedule up top, with a live now-marker</li><li>This week's shifts, workouts and sleep at a glance</li><li>Focus, weather, aviation, work, reminders, inbox and more</li></ul></div>
+  <div class="stage rv d1"><div class="phone"><div class="scr"><img src="shots/briefing.webp" alt="Briefing roll-up with source labels" loading="lazy"></div><i class="island"></i></div></div>
 </section>
 
-<section id="aviation" class="feature flip">
-  <div class="copy rv"><p class="kicker">Aviation</p><h2>METAR, TAF and a<br>VFR call you can trust.</h2><p>Raw and decoded field weather for CYKF, plus a short note that ties the forecast to your shift.</p>
-  <ul class="ticks"><li>Live category badge: VFR, MVFR, IFR or LIFR</li><li>Decoded wind, vis, sky and altimeter</li><li>Frost and timing callouts when they matter</li></ul></div>
-  <div class="stage rv d1"><div class="phone"><div class="scr"><img src="shots/aviation.webp" alt="Aviation METAR and TAF" loading="lazy"></div><i class="island"></i></div></div>
-</section>
-
-<section id="work" class="trio">
-  <div class="copy center rv"><p class="kicker">Work day</p><h2>Shifts, movements and the workout.</h2><p>Who you're working for, what's on the ramp, and when you're lifting — so the day doesn't collide with itself.</p></div>
+<section id="schedule" class="trio dark">
+  <div class="copy center rv"><p class="kicker">Schedule</p><h2>Today and the week, from Cal’s combined schedule.</h2><p>Chartright and EA shifts, workouts, sleep and the Guelph windows, in Ontario 24-hour time. Free windows and short-sleep nights are worked out for you.</p></div>
   <div class="row3">
-    <figure class="rv"><div class="phone"><div class="scr"><img src="shots/shifts.webp" alt="Today's shifts" loading="lazy"></div><i class="island"></i></div><figcaption><b>Shifts</b>EA, Chartright and the rest, with times and notes.</figcaption></figure>
-    <figure class="rv d1"><div class="phone"><div class="scr"><img src="shots/movements.webp" alt="Aircraft movements" loading="lazy"></div><i class="island"></i></div><figcaption><b>Movements</b>Arrivals and departures pulled from FlightBridge.</figcaption></figure>
-    <figure class="rv d2"><div class="phone"><div class="scr"><img src="shots/workout.webp" alt="Workout of the day" loading="lazy"></div><i class="island"></i></div><figcaption><b>Workout</b>Group, time and label — or a rest day.</figcaption></figure>
+    <figure class="rv"><div class="phone"><div class="scr"><img src="shots/schedule-today.webp" alt="Schedule today detail" loading="lazy"></div><i class="island"></i></div><figcaption><b>Today</b>What's on now, free windows and the full timeline.</figcaption></figure>
+    <figure class="rv d1"><div class="phone"><div class="scr"><img src="shots/schedule-week.webp" alt="Schedule week detail" loading="lazy"></div><i class="island"></i></div><figcaption><b>Week</b>Seven days side by side, plus sleep flags.</figcaption></figure>
+    <figure class="rv d2"><div class="phone"><div class="scr"><img src="shots/plan.webp" alt="Week widget page" loading="lazy"></div><i class="island"></i></div><figcaption><b>Week widget</b>The week on your home screen.</figcaption></figure>
   </div>
 </section>
 
-<section id="day" class="trio dark">
-  <div class="copy center rv"><p class="kicker">The day ahead</p><h2>Calendar, tasks and one clear focus.</h2><p>Your week view, the open list, and a single orange card that says what actually matters today.</p></div>
+<section id="sections" class="feature flip">
+  <div class="copy rv"><p class="kicker">Widgets</p><h2>Swipe between pages.<br>Tap to zoom in.</h2><p>Each part of the briefing has its own widget. Tap one and it grows into a full screen with more detail than the card shows.</p>
+  <ul class="ticks"><li>Swipe pager, so home never scrolls</li><li>A dock for Today, Week, Inbox and Settings</li><li>Safe areas respected on every iPhone</li></ul></div>
+  <div class="stage rv d1"><div class="phone"><div class="scr"><img src="shots/sections.webp" alt="Sections widget page" loading="lazy"></div><i class="island"></i></div></div>
+</section>
+
+<section class="trio">
+  <div class="copy center rv"><p class="kicker">Field and work</p><h2>Weather, METAR and TAF, and the shift ahead.</h2><p>Every detail screen goes further than its card: decoded aviation weather, how the day's weather lines up with your plans, and upcoming shifts with rest checks.</p></div>
   <div class="row3">
-    <figure class="rv"><div class="phone"><div class="scr"><img src="shots/calendar.webp" alt="Today's calendar" loading="lazy"></div><i class="island"></i></div><figcaption><b>Calendar</b>The week image embedded in the briefing.</figcaption></figure>
-    <figure class="rv d1"><div class="phone"><div class="scr"><img src="shots/tasks.webp" alt="Open tasks" loading="lazy"></div><i class="island"></i></div><figcaption><b>Open tasks</b>Everything still unchecked, in one place.</figcaption></figure>
-    <figure class="rv d2"><div class="phone"><div class="scr"><img src="shots/focus.webp" alt="Today's focus" loading="lazy"></div><i class="island"></i></div><figcaption><b>Today's focus</b>One sentence that sets the day.</figcaption></figure>
+    <figure class="rv"><div class="phone"><div class="scr"><img src="shots/weather.webp" alt="Weather detail" loading="lazy"></div><i class="island"></i></div><figcaption><b>Weather</b>Now, high and low, wind, and your day outside.</figcaption></figure>
+    <figure class="rv d1"><div class="phone"><div class="scr"><img src="shots/aviation.webp" alt="Aviation detail" loading="lazy"></div><i class="island"></i></div><figcaption><b>Aviation</b>Category, raw and decoded METAR and TAF.</figcaption></figure>
+    <figure class="rv d2"><div class="phone"><div class="scr"><img src="shots/work.webp" alt="Work detail" loading="lazy"></div><i class="island"></i></div><figcaption><b>Work</b>Today's shifts, movements, upcoming shifts.</figcaption></figure>
   </div>
 </section>
 
-<section id="more" class="trio">
-  <div class="copy center rv"><p class="kicker">And more</p><h2>Prospects, the Sixers, and every past day.</h2><p>Career leads with NEW badges, the next 76ers tip-off, and an archive of every briefing you've published.</p></div>
+<section class="trio dark">
+  <div class="copy center rv"><p class="kicker">Your day</p><h2>Focus, reminders and the inbox.</h2><p>One clear focus, reminders grouped by when they're due, and highlights from your assistants. No money or financial info, ever.</p></div>
   <div class="row3">
-    <figure class="rv"><div class="phone"><div class="scr"><img src="shots/prospects.webp" alt="Top pilot prospects" loading="lazy"></div><i class="island"></i></div><figcaption><b>Pilot prospects</b>Top ranked openings, flagged when they're new.</figcaption></figure>
-    <figure class="rv d1"><div class="phone"><div class="scr"><img src="shots/sixers.webp" alt="Next 76ers game" loading="lazy"></div><i class="island"></i></div><figcaption><b>Next 76ers game</b>Opponent, tip-off, venue and a GAME DAY badge.</figcaption></figure>
-    <figure class="rv d2"><div class="phone"><div class="scr"><img src="shots/archive.webp" alt="Briefing archive" loading="lazy"></div><i class="island"></i></div><figcaption><b>Archive</b>Scroll back through every published day.</figcaption></figure>
+    <figure class="rv"><div class="phone"><div class="scr"><img src="shots/day.webp" alt="Day detail" loading="lazy"></div><i class="island"></i></div><figcaption><b>Day</b>Focus, workout, calendar and open tasks.</figcaption></figure>
+    <figure class="rv d1"><div class="phone"><div class="scr"><img src="shots/reminders.webp" alt="Reminders detail" loading="lazy"></div><i class="island"></i></div><figcaption><b>Reminders</b>Next 24 hours, this week, later.</figcaption></figure>
+    <figure class="rv d2"><div class="phone"><div class="scr"><img src="shots/inbox.webp" alt="Inbox detail" loading="lazy"></div><i class="island"></i></div><figcaption><b>Inbox</b>Highlights, plus a sample thread list.</figcaption></figure>
   </div>
 </section>
 
-<section class="feature">
-  <div class="copy rv"><p class="kicker">On your phone</p><h2>A PWA you can<br>add to the Home Screen.</h2><p>Open the live briefing on your iPhone, tap Share, then Add to Home Screen. It launches full-screen with its own icon — no App Store required yet.</p>
-  <ul class="ticks"><li>Works offline once cached</li><li>Dark theme that matches the briefing</li><li>Public copy never includes money data</li></ul></div>
-  <div class="stage rv d1"><div class="phone"><div class="scr"><img src="shots/today.webp" alt="Briefing on the Home Screen" loading="lazy"></div><i class="island"></i></div></div>
+<section id="gestures" class="feature">
+  <div class="copy rv"><p class="kicker">Gestures</p><h2>Swipe up<br>to go home.</h2><p>Drag the home bar and the screen shrinks back into the widget it came from, just like on iPhone. The More section has the pilot prospects, the next 76ers game and the briefing archive.</p></div>
+  <div class="stage rv d1"><div class="phone"><div class="scr"><img src="shots/swipe-up.webp" alt="Swipe up from the home bar to close" loading="lazy"></div><i class="island"></i></div></div>
+</section>
+
+<section id="colourways" class="trio">
+  <div class="copy center rv"><p class="kicker">Colourways</p><h2>Six looks, dark or light.</h2><p>Midnight, Runway, Aurora, Cockpit, Daylight and Paper. Pick one in Settings.</p></div>
+  <div class="row3">
+    <figure class="rv"><div class="phone"><div class="scr"><img src="shots/cw-runway.webp" alt="Runway colourway" loading="lazy"></div><i class="island"></i></div><figcaption><b>Runway</b>Warm amber on black.</figcaption></figure>
+    <figure class="rv d1"><div class="phone"><div class="scr"><img src="shots/cw-daylight.webp" alt="Daylight colourway" loading="lazy"></div><i class="island"></i></div><figcaption><b>Daylight</b>Clean and light.</figcaption></figure>
+    <figure class="rv d2"><div class="phone"><div class="scr"><img src="shots/settings.webp" alt="Settings with colourway picker" loading="lazy"></div><i class="island"></i></div><figcaption><b>Settings</b>Colourways and data sources.</figcaption></figure>
+  </div>
 </section>
 
 <section class="final rv">
   <img class="appicon" src="icon-512.png" alt="" width="96" height="96">
-  <h2>Your morning, already assembled.</h2>
-  <p>Open the live briefing on your phone, then Add to Home Screen.</p>
-  <div class="ctas center"><a class="pill" href="https://jacksonpjwilson-dev.github.io/briefing/">Open the live briefing</a><span class="store" role="img" aria-label="Coming soon on the App Store"><svg class="apl" viewBox="0 0 17 20" aria-hidden="true"><path fill="currentColor" d="M14.1 10.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9C3.6 4.8 2 5.8 1.1 7.4c-1.8 3.2-.5 7.9 1.3 10.5.9 1.3 1.9 2.7 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.6 1-1.5 1.4-2.9 1.4-3-.1 0-2.7-1-2.7-4.3zM11.6 3c.7-.9 1.2-2 1-3.2-1 0-2.3.7-3 1.6-.7.8-1.2 2-1.1 3.1 1.2.1 2.3-.6 3.1-1.5z"/></svg><span><small>Coming soon on the</small><b>App Store</b></span></span></div>
+  <h2>Your day, on one home screen.</h2>
+  <p>Open the live preview on your iPhone, tap Share, then Add to Home Screen.</p>
+  <div class="ctas center"><a class="pill" href="https://jacksonpjwilson-dev.github.io/briefing/preview-widget/">Open the live preview</a><span class="store" role="img" aria-label="Coming soon on the App Store"><svg class="apl" viewBox="0 0 17 20" aria-hidden="true"><path fill="currentColor" d="M14.1 10.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9C3.6 4.8 2 5.8 1.1 7.4c-1.8 3.2-.5 7.9 1.3 10.5.9 1.3 1.9 2.7 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.6 1-1.5 1.4-2.9 1.4-3-.1 0-2.7-1-2.7-4.3zM11.6 3c.7-.9 1.2-2 1-3.2-1 0-2.3.7-3 1.6-.7.8-1.2 2-1.1 3.1 1.2.1 2.3-.6 3.1-1.5z"/></svg><span><small>Coming soon on the</small><b>App Store</b></span></span></div>
 </section>
 </main>
-<footer><span>© 2026 Daily Briefing</span><span>Screens shown use the live public briefing.</span></footer>
+<footer><span>© 2026 Daily Briefing</span><span>Screens show the live preview on Mon Oct 19 2026. The inbox thread list is sample data.</span></footer>
 <script src="app.js?v=1"></script>
 </body>
 </html>
