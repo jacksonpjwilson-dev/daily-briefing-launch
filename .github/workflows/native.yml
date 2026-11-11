@@ -2,9 +2,9 @@ name: Native Apple validation
 on:
   pull_request:
     paths: ['native/**', '.github/workflows/native.yml']
-  push:
-    branches-ignore: [main]
-    paths: ['native/**', '.github/workflows/native.yml']
+concurrency:
+  group: native-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:

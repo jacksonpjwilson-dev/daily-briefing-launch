@@ -56,14 +56,14 @@ struct RootView: View {
         .tint(.cyan)
         .task {
             controller.calendar.reload()
-            if controller.snapshot.map({ Date().timeIntervalSince($0.generatedAt) > 900 }) ?? true { await controller.refresh() }
+            if controller.needsRefresh { await controller.refresh() }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 controller.location.requestIfAuthorized()
                 Task {
                     await ShiftActivities.endExpired()
-                    if controller.snapshot.map({ Date().timeIntervalSince($0.generatedAt) > 900 }) ?? true { await controller.refresh() }
+                    if controller.needsRefresh { await controller.refresh() }
                 }
             }
         }

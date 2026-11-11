@@ -1,3 +1,4 @@
+import Observation
 import Foundation
 import SwiftData
 import WidgetKit
@@ -21,7 +22,13 @@ import WidgetKit
         query.fetchLimit = 1
         snapshot = (try? context.fetch(query))?.first?.snapshot
         calendar.reload()
+        let now = Date(), c = Calendar.autoupdatingCurrent
+        upcomingEvents = calendar.events(preferences: settings.value, from: c.startOfDay(for: now), to: c.date(byAdding: .day, value: 9, to: now)!)
         _ = WatchBridge.shared
+    }
+    var needsRefresh: Bool {
+        guard let snapshot else { return true }
+        return !Calendar.autoupdatingCurrent.isDateInToday(snapshot.generatedAt) || Date().timeIntervalSince(snapshot.generatedAt) > 900
     }
     func refresh(only kind: SectionKind? = nil) async {
         guard phase != .loading else { return }
