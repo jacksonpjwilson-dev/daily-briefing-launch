@@ -50,9 +50,13 @@ import WidgetKit
                 case .schedule:
                     let todayEnd = c.date(byAdding: .day, value: 1, to: start)!
                     let items = upcomingEvents.filter { ($0.date ?? .distantFuture) < todayEnd && ($0.end ?? .distantPast) > start }
-                    let hasCalendar = calendar.status == .fullAccess && (!p.calendarIDs.isEmpty || !p.workCalendarID.isEmpty)
-                    result = BriefingSection(kind: .schedule, state: hasCalendar || !p.manualShifts.isEmpty ? .ready : .disconnected,
-                        message: !hasCalendar && p.manualShifts.isEmpty ? "Select calendars or add a manual shift in Settings." : items.isEmpty ? "No commitments today." : "",
+                    let availableIDs = Set(calendar.calendars.map(\.calendarIdentifier))
+                    let hasCalendar = calendar.status == .fullAccess && (!p.calendarIDs.intersection(availableIDs).isEmpty || availableIDs.contains(p.workCalendarID))
+                    let denied = calendar.status == .denied || calendar.status == .restricted
+                    let sourceState: ProviderState = hasCalendar || !p.manualShifts.isEmpty ? .ready : denied ? .permissionDenied : .disconnected
+                    let sourceMessage = denied ? "Calendar access is unavailable. Enable it in system Settings; manual entries remain available." : !hasCalendar && p.manualShifts.isEmpty ? "Select available calendars or add a manual shift in Settings." : items.isEmpty ? "No commitments today." : ""
+                    result = BriefingSection(kind: .schedule, state: sourceState,
+                        message: sourceMessage,
                         fetchedAt: now, expiresAt: now.addingTimeInterval(900), items: items)
                 case .tasks: result = await calendar.reminders()
                 case .weather: result = try await WeatherProvider().fetch(location: location.location, fahrenheit: p.fahrenheit)
@@ -132,7 +136,8 @@ import WidgetKit
     var healthReport: HealthReport {
         HealthReport(lastSuccessfulGeneration: snapshot?.generatedAt, nextScheduledBriefing: snapshot?.nextDelivery,
             providers: (snapshot?.sections ?? []).map { .init(section: $0.kind, state: $0.assessed(at: Date()).state, lastRefresh: $0.fetchedAt) },
-            integrationErrors: errorMessage.map { [$0] } ?? [], deliveryErrors: deliveryErrors,
+            integrationErrors: (errorMessage.map { [$0] } ?? []) +
+                ((calendar.status == .denied || calendar.status == .restricted) ? ["Calendar permission unavailable."] : []), deliveryErrors: deliveryErrors,
             failedRefreshAttempts: failedRefreshAttempts,
             version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown",
             build: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown")

@@ -1,7 +1,7 @@
 name: Native Apple validation
 on:
   pull_request:
-    paths: ['native/**', '.github/workflows/native.yml']
+    paths: ['native/**', '.github/workflows/native.yml', '!native/README.md', '!native/VALIDATION.md']
 concurrency:
   group: native-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true

@@ -55,6 +55,16 @@ final class BriefingCoreTests: XCTestCase {
         XCTAssertEqual(GenerationPhase.result(for: [ready]), .complete)
         XCTAssertEqual(GenerationPhase.result(for: [ready, missing]), .partial)
     }
+    func testSharedTextLabelsExpiredSources() {
+        let old = Date().addingTimeInterval(-7200)
+        let section = BriefingSection(kind: .weather, state: .ready, fetchedAt: old, expiresAt: old.addingTimeInterval(1800),
+            items: [.init(title: "Weather report", source: "Verified source")])
+        let snapshot = BriefingSnapshot(generatedAt: old, sections: [section])
+        XCTAssertTrue(snapshot.summaryText.contains("[stale]"))
+        XCTAssertTrue(snapshot.summaryText.contains("source refreshed"))
+        XCTAssertTrue(snapshot.summaryText.contains("Verified source"))
+        XCTAssertTrue(snapshot.summaryText.contains("saved"))
+    }
     func testGenerationStateTransitions() {
         var state = GenerationStateMachine()
         XCTAssertEqual(state.phase, .idle)

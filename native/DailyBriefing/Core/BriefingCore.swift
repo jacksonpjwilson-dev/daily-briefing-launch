@@ -68,9 +68,16 @@ public struct BriefingSnapshot: Codable, Identifiable, Sendable {
     public var readSections: Set<SectionKind> = []
     public var pinnedItems: Set<String> = []
     public var summaryText: String {
-        sections.map { section in
-            "\(section.kind.title): " + (section.items.isEmpty ? section.message : section.items.map { "\($0.title). \($0.detail)" }.joined(separator: " "))
+        let content = sections.map { section in
+            let assessed = section.assessed(at: Date())
+            let timestamp = section.fetchedAt.map { " · source refreshed " + $0.formatted(date: .abbreviated, time: .shortened) } ?? ""
+            let items = section.items.map { item in
+                let date = item.date.map { " (" + $0.formatted(date: .abbreviated, time: .shortened) + ")" } ?? ""
+                return "\(item.title)\(date). \(item.detail) [\(item.source)]"
+            }.joined(separator: " ")
+            return "\(section.kind.title) [\(assessed.state.rawValue)]\(timestamp): \(assessed.message) \(items)"
         }.joined(separator: "\n\n")
+        return "Daily Briefing · saved \(generatedAt.formatted(date: .abbreviated, time: .shortened))\n\n" + content
     }
 }
 public struct ManualShift: Codable, Identifiable, Sendable {

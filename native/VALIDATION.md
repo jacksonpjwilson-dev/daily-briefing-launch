@@ -2,7 +2,7 @@
 
 - Existing GitHub repository inspected through the authorized connection; selected `daily-briefing-launch` with user confirmation. Existing website application files are unchanged.
 - Branch: `codex/native-daily-briefing`.
-- `swift test --package-path native` using official Swift 6.0.3 Linux toolchain: **8 tests passed, 0 failures**. These exercise the same Foundation scheduling/freshness/conflict/policy models compiled into all native targets.
+- `swift test --package-path native` using official Swift 6.0.3 Linux toolchain: **9 tests passed, 0 failures**. These exercise the same Foundation scheduling/freshness/conflict/policy models compiled into all native targets.
 - `swiftc -frontend -parse` on all **20 Swift files**: passed. Syntax parsing is not Apple framework type checking.
 - `python3 native/validate_project.py`: passed; **102 PBX objects**, four targets, references/membership, Info/entitlement/privacy plists, shared schemes, deterministic generation.
 - Existing `node ci/smoke.mjs`: **27 checks passed, 0 failed** before adding native build products.
