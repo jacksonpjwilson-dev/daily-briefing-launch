@@ -18,7 +18,7 @@ import WidgetKit
     private(set) var upcomingEvents: [BriefingItem] = []
     private let context: ModelContext
     init(settings: SettingsStore, container: ModelContainer) {
-        self.settings = settings; context = ModelContext(container)
+        self.settings = settings; context = container.mainContext
         var query = FetchDescriptor<SavedBriefing>(sortBy: [SortDescriptor(\.generatedAt, order: .reverse)])
         query.fetchLimit = 1
         snapshot = (try? context.fetch(query))?.first?.snapshot
