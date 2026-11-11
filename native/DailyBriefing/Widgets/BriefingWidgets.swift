@@ -64,7 +64,7 @@ struct BriefingWidgetView: View {
                 }
             }
         }
-        .containerBackground(for: .widget) { Color(.sRGB, red: 0.06, green: 0.1, blue: 0.16, opacity: 1).gradient }
+        .containerBackground(for: .widget) { LinearGradient(colors: [Color(red: 0.06, green: 0.1, blue: 0.16), .black], startPoint: .topLeading, endPoint: .bottomTrailing) }
         .widgetURL(URL(string: "dailybriefing://\(SharedSnapshot.selectedSection.rawValue)"))
     }
 }

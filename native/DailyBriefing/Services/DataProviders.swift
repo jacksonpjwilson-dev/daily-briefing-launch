@@ -80,7 +80,7 @@ struct WeatherProvider {
             items += alerts.map { BriefingItem(title: $0.summary, detail: "Weather alert", url: $0.detailsURL, source: $0.source) }
         }
         let attribution = try await WeatherService.shared.attribution
-        items.append(BriefingItem(title: "Weather attribution and legal information", url: attribution.legalPageURL, source: "Apple Weather"))
+        items.append(BriefingItem(title: "Weather attribution and legal information", url: attribution.legalPageURL, source: "Apple Weather", attributionImageURL: attribution.combinedMarkDarkURL))
         return BriefingSection(kind: .weather, state: Date().timeIntervalSince(weather.currentWeather.date) < 3600 ? .ready : .stale, fetchedAt: Date(), expiresAt: min(Date().addingTimeInterval(1800), weather.currentWeather.date.addingTimeInterval(3600)), items: items)
     }
 }

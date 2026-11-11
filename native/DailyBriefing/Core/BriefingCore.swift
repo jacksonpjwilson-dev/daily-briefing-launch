@@ -28,11 +28,12 @@ public struct BriefingItem: Codable, Identifiable, Hashable, Sendable {
     public var end: Date?
     public var url: URL?
     public var source: String
+    public var attributionImageURL: URL?
     public var isShift: Bool
     public init(id: String = UUID().uuidString, title: String, detail: String = "", date: Date? = nil,
-                end: Date? = nil, url: URL? = nil, source: String, isShift: Bool = false) {
+                end: Date? = nil, url: URL? = nil, source: String, isShift: Bool = false, attributionImageURL: URL? = nil) {
         self.id = id; self.title = title; self.detail = detail; self.date = date
-        self.end = end; self.url = url; self.source = source; self.isShift = isShift
+        self.end = end; self.url = url; self.source = source; self.isShift = isShift; self.attributionImageURL = attributionImageURL
     }
 }
 public struct BriefingSection: Codable, Identifiable, Sendable {

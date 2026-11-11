@@ -49,7 +49,13 @@ struct SettingsView: View {
             Section("Notifications") {
                 Toggle("Briefing reminders", isOn: $settings.value.notificationsEnabled)
                     .onChange(of: settings.value.notificationsEnabled) { _, enabled in
-                        if enabled { Task { do { settings.value.notificationsEnabled = try await NotificationService.request() } catch { status = error.localizedDescription; settings.value.notificationsEnabled = false } } }
+                        Task {
+                            if enabled {
+                                do { settings.value.notificationsEnabled = try await NotificationService.request() }
+                                catch { status = error.localizedDescription; settings.value.notificationsEnabled = false }
+                            }
+                            if !settings.value.notificationsEnabled { try? await NotificationService.schedule(dates: [], preferences: settings.value) }
+                        }
                     }
                 Toggle("Quiet hours", isOn: $settings.value.notificationPolicy.quietEnabled)
                 if settings.value.notificationPolicy.quietEnabled {
@@ -99,6 +105,7 @@ struct SettingsView: View {
                 if let status { Text(status).font(.caption).foregroundStyle(.secondary) }
             }
         }.navigationTitle("Settings")
+            .onDisappear { Task { await controller.refresh() } }
     }
     private var connections: some View {
         Form {

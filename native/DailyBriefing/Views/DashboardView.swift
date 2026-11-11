@@ -113,6 +113,11 @@ struct SectionCard: View {
     let pin: (String) -> Void
     let openEvent: (BriefingItem) -> Void
     let startActivity: (BriefingItem) -> Void
+    private var visibleItems: [BriefingItem] {
+        if expanded { return section.items }
+        let first = Array(section.items.prefix(3))
+        return first + section.items.dropFirst(3).filter { $0.attributionImageURL != nil }
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
@@ -132,7 +137,7 @@ struct SectionCard: View {
             }.font(.caption).foregroundStyle(.secondary)
             if !section.message.isEmpty { Text(section.message).font(.subheadline).foregroundStyle(.secondary) }
             let conflicts = section.kind == .schedule ? BriefingScheduler.conflicts(section.items) : []
-            ForEach(Array(section.items.prefix(expanded ? 100 : 3))) { item in
+            ForEach(visibleItems) { item in
                 VStack(alignment: .leading, spacing: 6) {
                     ItemRow(item: item, pinned: pinned.contains(item.id))
                     if conflicts.contains(item.id) { Label("Overlapping commitment", systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange) }
@@ -142,7 +147,7 @@ struct SectionCard: View {
                     if section.kind == .schedule && item.source != "Manual schedule" { Button("View calendar event", systemImage: "calendar") { openEvent(item) } }
                     if item.isShift { Button("Start shift countdown", systemImage: "timer") { startActivity(item) } }
                 }
-                if item.id != section.items.prefix(expanded ? 100 : 3).last?.id { Divider() }
+                if item.id != visibleItems.last?.id { Divider() }
             }
             if section.items.count > 3 { Button(expanded ? "Show less" : "Show all \(section.items.count)", action: toggleExpanded).font(.caption.weight(.semibold)) }
         }.padding(20).background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 24))
@@ -153,6 +158,11 @@ struct ItemRow: View {
     let pinned: Bool
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
+            if let imageURL = item.attributionImageURL {
+                AsyncImage(url: imageURL) { image in image.resizable().scaledToFit() } placeholder: { Text("Apple Weather").foregroundStyle(.black) }
+                    .frame(width: 130, height: 24).padding(6).background(.white, in: RoundedRectangle(cornerRadius: 6))
+                    .accessibilityLabel("Apple Weather")
+            }
             HStack(alignment: .top) {
                 Text(item.title).font(.subheadline.weight(.semibold))
                 if pinned { Image(systemName: "pin.fill").font(.caption).foregroundStyle(.orange) }
