@@ -1,0 +1,29 @@
+name: Native Apple validation
+on:
+  pull_request:
+    paths: ['native/**', '.github/workflows/native.yml']
+  push:
+    branches-ignore: [main]
+    paths: ['native/**', '.github/workflows/native.yml']
+permissions:
+  contents: read
+jobs:
+  core:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test scheduling, freshness, conflicts and delivery policy
+        run: swift test --package-path native
+      - name: Validate generated project
+        run: python3 native/validate_project.py
+  apple-build:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record toolchain
+        run: xcodebuild -version
+      - name: Build iPhone app, widgets, watch app and watch widgets
+        run: xcodebuild -project native/DailyBriefing.xcodeproj -scheme DailyBriefing -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath native/DerivedData CODE_SIGNING_ALLOWED=NO build
+      - name: Build watch scheme
+        run: xcodebuild -project native/DailyBriefing.xcodeproj -scheme DailyBriefingWatch -configuration Debug -destination 'generic/platform=watchOS Simulator' -derivedDataPath native/DerivedData CODE_SIGNING_ALLOWED=NO build
