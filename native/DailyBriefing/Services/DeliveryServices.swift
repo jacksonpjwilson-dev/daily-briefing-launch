@@ -1,6 +1,6 @@
 import Observation
 import Foundation
-import UserNotifications
+@preconcurrency import UserNotifications
 import BackgroundTasks
 import ActivityKit
 import AVFoundation

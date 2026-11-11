@@ -49,12 +49,17 @@ enum HTTP {
         if manager.authorizationStatus == .notDetermined { manager.requestWhenInUseAuthorization() }
         else if [.authorizedAlways, .authorizedWhenInUse].contains(manager.authorizationStatus) { manager.requestLocation() }
     }
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        status = manager.authorizationStatus
-        if [.authorizedAlways, .authorizedWhenInUse].contains(status) { manager.requestLocation() }
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let authorization = manager.authorizationStatus
+        Task { @MainActor in self.status = authorization; self.requestIfAuthorized() }
     }
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) { location = locations.last }
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) { location = nil }
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        let latest = locations.last
+        Task { @MainActor in self.location = latest }
+    }
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        Task { @MainActor in self.location = nil }
+    }
 }
 struct WeatherProvider {
     func fetch(location: CLLocation?, fahrenheit: Bool) async throws -> BriefingSection {

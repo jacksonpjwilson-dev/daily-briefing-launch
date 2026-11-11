@@ -34,9 +34,10 @@ import BackgroundTasks
                 }
             }
         }
-        .backgroundTask(.appRefresh(BackgroundRefresh.identifier)) {
-            if let controller { await controller.refresh() }
-        }
+        .backgroundTask(.appRefresh(BackgroundRefresh.identifier)) { await performBackgroundRefresh() }
+    }
+    private func performBackgroundRefresh() async {
+        if let controller { await controller.refresh() }
     }
 }
 struct RootView: View {
@@ -56,10 +57,12 @@ struct RootView: View {
         .tint(.cyan)
         .task {
             controller.calendar.reload()
+            IntentRouter.consume(into: controller)
             if controller.needsRefresh { await controller.refresh() }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
+                IntentRouter.consume(into: controller)
                 controller.location.requestIfAuthorized()
                 Task {
                     await ShiftActivities.endExpired()
@@ -71,6 +74,9 @@ struct RootView: View {
             Task { await controller.refresh(only: .schedule) }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name.NSSystemTimeZoneDidChange)) { _ in Task { await controller.refresh() } }
+        .onReceive(NotificationCenter.default.publisher(for: IntentRouter.notification)) { _ in
+            selectedTab = 0; IntentRouter.consume(into: controller)
+        }
         .onOpenURL { url in
             guard url.scheme == "dailybriefing" else { return }
             selectedTab = 0

@@ -12,8 +12,9 @@ struct OpenBriefingIntent: AppIntent {
     static let description = IntentDescription("Open today's briefing or a section.")
     static let openAppWhenRun = true
     @Parameter(title: "Section", default: .today) var section: BriefingDestination
-    @MainActor func perform() async throws -> some IntentResult & OpensIntent {
-        .result(opensIntent: OpenURLIntent(URL(string: "dailybriefing://\(section.rawValue)")!))
+    @MainActor func perform() async throws -> some IntentResult {
+        IntentRouter.request(section.rawValue)
+        return .result()
     }
 }
 struct NextAppointmentIntent: AppIntent {
@@ -29,8 +30,9 @@ struct NextAppointmentIntent: AppIntent {
 struct RefreshBriefingIntent: AppIntent {
     static let title: LocalizedStringResource = "Refresh daily briefing"
     static let openAppWhenRun = true
-    @MainActor func perform() async throws -> some IntentResult & OpensIntent {
-        .result(opensIntent: OpenURLIntent(URL(string: "dailybriefing://refresh")!))
+    @MainActor func perform() async throws -> some IntentResult {
+        IntentRouter.request("refresh")
+        return .result()
     }
 }
 struct BriefingShortcuts: AppShortcutsProvider {
@@ -38,5 +40,19 @@ struct BriefingShortcuts: AppShortcutsProvider {
         AppShortcut(intent: OpenBriefingIntent(), phrases: ["Open \(.applicationName)", "Show \(\.$section) in \(.applicationName)"], shortTitle: "Open briefing", systemImageName: "sun.max")
         AppShortcut(intent: NextAppointmentIntent(), phrases: ["Read my next appointment in \(.applicationName)"], shortTitle: "Next appointment", systemImageName: "calendar")
         AppShortcut(intent: RefreshBriefingIntent(), phrases: ["Refresh \(.applicationName)"], shortTitle: "Refresh briefing", systemImageName: "arrow.clockwise")
+    }
+}
+
+@MainActor enum IntentRouter {
+    static let notification = Notification.Name("DailyBriefing.intent")
+    static func request(_ route: String) {
+        UserDefaults.standard.set(route, forKey: "pendingIntentRoute")
+        NotificationCenter.default.post(name: notification, object: nil)
+    }
+    static func consume(into controller: BriefingController) {
+        guard let route = UserDefaults.standard.string(forKey: "pendingIntentRoute") else { return }
+        UserDefaults.standard.removeObject(forKey: "pendingIntentRoute")
+        if route == "refresh" { Task { await controller.refresh() } }
+        else { controller.route = SectionKind(rawValue: route) }
     }
 }
