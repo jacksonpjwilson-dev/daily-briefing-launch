@@ -6,3 +6,4 @@ native/DerivedData/
 **/xcuserdata/
 *.xcuserstate
 __pycache__/
+native/artifacts/

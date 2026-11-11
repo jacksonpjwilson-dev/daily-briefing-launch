@@ -27,3 +27,12 @@ jobs:
         run: xcodebuild -project native/DailyBriefing.xcodeproj -scheme DailyBriefing -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath native/DerivedData CODE_SIGNING_ALLOWED=NO build
       - name: Build watch scheme
         run: xcodebuild -project native/DailyBriefing.xcodeproj -scheme DailyBriefingWatch -configuration Debug -destination 'generic/platform=watchOS Simulator' -derivedDataPath native/DerivedData CODE_SIGNING_ALLOWED=NO build
+      - name: Install and launch in iPhone simulator
+        run: python3 native/ci_simulator_smoke.py
+      - name: Save simulator screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-briefing-first-launch
+          path: native/artifacts/
+          if-no-files-found: ignore
