@@ -55,6 +55,20 @@ final class BriefingCoreTests: XCTestCase {
         XCTAssertEqual(GenerationPhase.result(for: [ready]), .complete)
         XCTAssertEqual(GenerationPhase.result(for: [ready, missing]), .partial)
     }
+    func testGenerationStateTransitions() {
+        var state = GenerationStateMachine()
+        XCTAssertEqual(state.phase, .idle)
+        XCTAssertTrue(state.start()); XCTAssertEqual(state.phase, .loading)
+        XCTAssertFalse(state.start(), "Concurrent generation must be rejected")
+        state.finish(sections: []); XCTAssertEqual(state.phase, .failed)
+        XCTAssertTrue(state.start())
+        state.finish(sections: [.init(kind: .schedule, state: .ready), .init(kind: .email, state: .disconnected)])
+        XCTAssertEqual(state.phase, .partial)
+        XCTAssertTrue(state.start()); state.cancel(); XCTAssertEqual(state.phase, .idle)
+        XCTAssertTrue(state.start()); state.fail(); XCTAssertEqual(state.phase, .failed)
+        XCTAssertTrue(state.start()); state.finish(sections: [.init(kind: .schedule, state: .ready)])
+        XCTAssertEqual(state.phase, .complete)
+    }
     func testConflictsAndNotificationDeduplication() {
         let now = Date()
         let a = BriefingItem(id: "a", title: "A", date: now, end: now.addingTimeInterval(600), source: "Calendar")

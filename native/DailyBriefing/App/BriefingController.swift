@@ -9,7 +9,8 @@ import WidgetKit
     let location = LocationService()
     let speech = SpeechService()
     var snapshot: BriefingSnapshot?
-    var phase = GenerationPhase.idle
+    private var generation = GenerationStateMachine()
+    var phase: GenerationPhase { generation.phase }
     var errorMessage: String?
     var deliveryErrors: [String] = []
     var failedRefreshAttempts = 0
@@ -31,8 +32,8 @@ import WidgetKit
         return !Calendar.autoupdatingCurrent.isDateInToday(snapshot.generatedAt) || Date().timeIntervalSince(snapshot.generatedAt) > 900
     }
     func refresh(only kind: SectionKind? = nil) async {
-        guard phase != .loading else { return }
-        phase = .loading; errorMessage = nil
+        guard generation.start() else { return }
+        errorMessage = nil
         let now = Date(), p = settings.value, c = Calendar.autoupdatingCurrent
         let start = c.startOfDay(for: now)
         let end = c.date(byAdding: .day, value: 9, to: start)!
@@ -42,7 +43,7 @@ import WidgetKit
         var sections: [BriefingSection] = kind == nil ? [] : (snapshot?.sections ?? []).filter { !p.hiddenSections.contains($0.kind) }
         let selected = kind.map { [$0] } ?? p.sectionOrder.filter { !p.hiddenSections.contains($0) }
         for section in selected where section != .summary {
-            if Task.isCancelled { phase = .idle; return }
+            if Task.isCancelled { generation.cancel(); return }
             var result: BriefingSection
             do {
                 switch section {
@@ -104,18 +105,18 @@ import WidgetKit
         }
         do {
             context.insert(try SavedBriefing(next)); try context.save()
-            snapshot = next; phase = .result(for: sections)
+            snapshot = next; generation.finish(sections: sections)
             failedRefreshAttempts += sections.filter { [.failed, .offline].contains($0.state) }.count
             let cutoff = c.date(byAdding: .day, value: -p.retentionDays, to: now)!
             let old = try context.fetch(FetchDescriptor<SavedBriefing>(predicate: #Predicate { $0.generatedAt < cutoff }))
             for row in old { context.delete(row) }; try context.save()
-        } catch { phase = .failed; failedRefreshAttempts += 1; errorMessage = "Unable to save briefing: \(error.localizedDescription)"; return }
+        } catch { generation.fail(); failedRefreshAttempts += 1; errorMessage = "Unable to save briefing: \(error.localizedDescription)"; return }
         deliveryErrors = []
         SharedSnapshot.selectedSection = p.widgetSection
         do { try SharedSnapshot.write(next); WidgetCenter.shared.reloadAllTimelines() }
         catch { deliveryErrors.append("Widget cache unavailable. Check App Group signing.") }
         do { try WatchBridge.shared.publish(next) } catch { deliveryErrors.append("Watch transfer failed.") }
-        do { try await NotificationService.schedule(dates: deliveries, preferences: p) } catch { deliveryErrors.append("Notification scheduling failed: \(error.localizedDescription)") }
+        do { try await NotificationService.schedule(dates: deliveries, preferences: settings.value) } catch { deliveryErrors.append("Notification scheduling failed: \(error.localizedDescription)") }
         do { try BackgroundRefresh.schedule(at: deliveries.first) } catch { deliveryErrors.append("Background refresh unavailable; open the app to refresh.") }
         await ShiftActivities.endExpired()
     }

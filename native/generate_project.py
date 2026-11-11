@@ -37,7 +37,7 @@ plist(SOURCE/'Resources/OptionalCloudWeather.entitlements', dict(group, **{
 plist(SOURCE/'Resources/PrivacyInfo.xcprivacy', {
     'NSPrivacyTracking':False, 'NSPrivacyTrackingDomains':[], 'NSPrivacyCollectedDataTypes':[],
     'NSPrivacyAccessedAPITypes':[{'NSPrivacyAccessedAPIType':'NSPrivacyAccessedAPICategoryUserDefaults',
-        'NSPrivacyAccessedAPITypeReasons':['CA92.1']}]
+        'NSPrivacyAccessedAPITypeReasons':['CA92.1','1C8F.1']}]
 })
 files = sorted(SOURCE.rglob('*.swift')) + [SOURCE/'Resources/PrivacyInfo.xcprivacy']
 refs = {}

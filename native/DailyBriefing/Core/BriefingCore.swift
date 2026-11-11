@@ -128,6 +128,17 @@ public enum GenerationPhase: Equatable, Sendable {
         return available == sections.count ? .complete : .partial
     }
 }
+public struct GenerationStateMachine: Sendable {
+    public private(set) var phase: GenerationPhase = .idle
+    public init() {}
+    @discardableResult public mutating func start() -> Bool {
+        guard phase != .loading else { return false }
+        phase = .loading; return true
+    }
+    public mutating func finish(sections: [BriefingSection]) { phase = .result(for: sections) }
+    public mutating func fail() { phase = .failed }
+    public mutating func cancel() { phase = .idle }
+}
 public struct NotificationPolicy: Codable, Sendable {
     public var quietStart: Int = 1320
     public var quietEnd: Int = 180
