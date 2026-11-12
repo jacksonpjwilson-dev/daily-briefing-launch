@@ -7,9 +7,9 @@ Repository: `jacksonpjwilson-dev/daily-briefing-launch`. Branch: `codex/native-d
 | Check | Result |
 | --- | --- |
 | Current core suite, official Swift 6.0.3 on Linux | **10 tests passed, 0 failures** |
-| macOS core suite before the final credential-origin test | **9 tests passed**, including the corrected package deployment targets; [job](https://github.com/jacksonpjwilson-dev/daily-briefing-launch/actions/runs/43195670712/job/131106036355) |
-| iPhone app, WidgetKit/Live Activity extension, watch app, watch widget extension | **All four targets built successfully** on Xcode 16.4 macOS CI; the separate Watch scheme also passed; [build job](https://github.com/jacksonpjwilson-dev/daily-briefing-launch/actions/runs/43195670712/job/131106035636) |
-| iPhone simulator install, launch and process survival | **Passed** in [run 43066174548](https://github.com/jacksonpjwilson-dev/daily-briefing-launch/actions/runs/43066174548); screenshot captured and visually inspected |
+| Current macOS core suite | **10 tests passed**, including the credential-origin regression; [job](https://github.com/jacksonpjwilson-dev/daily-briefing-launch/actions/runs/43198797955/job/131116508749) |
+| iPhone app, WidgetKit/Live Activity extension, watch app, watch widget extension | **All four targets built successfully** on Xcode 16.4 macOS CI; the separate Watch scheme also passed; [build job](https://github.com/jacksonpjwilson-dev/daily-briefing-launch/actions/runs/43198797955/job/131116507996) |
+| iPhone simulator install, launch and process survival | **Passed** in [run 43198797955](https://github.com/jacksonpjwilson-dev/daily-briefing-launch/actions/runs/43198797955); screenshot captured and visually inspected |
 | Generated Xcode project validation | **Passed**: 102 PBX objects, four targets, source membership, plist/entitlement/privacy syntax, shared schemes and reproducibility |
 | Existing website smoke test | **27 checks passed, 0 failed** |
 | Whitespace/diff validation | **Passed** |
@@ -18,9 +18,9 @@ The ten tests cover shift/fallback/weekend/day-off scheduling, time zones, DST g
 
 ## Latest revalidation
 
-[Run 43198797955](https://github.com/jacksonpjwilson-dev/daily-briefing-launch/actions/runs/43198797955) revalidates application-code commit `e8344e7`, including the credential-origin change. Both macOS jobs were queued when this report was written. **The latest credential patch has passed the Linux tests but has not yet been verified by an Apple build.** Later documentation-only commits do not change the code under validation. Consult that run for its eventual result.
+[Run 43198797955](https://github.com/jacksonpjwilson-dev/daily-briefing-launch/actions/runs/43198797955) completed **successfully** for application-code commit `e8344e7`, including the credential-origin security patch. Ten tests passed on macOS; project validation, all four Apple targets, the separate Watch build, and the iPhone simulator install/launch/process-survival check passed on Xcode 16.4. Subsequent changes were documentation only.
 
-GitHub reported macOS arm64 runner capacity constraints, including one earlier job that never acquired a runner. CI now uses the supported standard `macos-15-intel` runner with Xcode 16.4. A later repeat simulator check stalled in a `simctl` command after its builds passed and was canceled. The smoke script now selects the matching/newest available SDK runtime, logs each stage, and has explicit startup/install/launch timeouts. The earlier successful launch result remains valid evidence; the repeat is not described as passed.
+The previous queued status is superseded by this result. Signed capabilities and physical-device integration remain unverified. Build logs still contain SwiftData Sendable warnings and an App Intents training diagnostic; see `PRODUCTION_READINESS.md` for their scope, the complete feature audit and release plan.
 
 The BBC RSS feed and NOAA CYKF METAR/TAF endpoints responded HTTP 200 in source probes; a later NOAA request returned HTTP 502. The public NBA scoreboard endpoint returned HTTP 403 in this environment. Sports therefore retains a disconnected provider boundary instead of invented scores or a claim that access is configured.
 
