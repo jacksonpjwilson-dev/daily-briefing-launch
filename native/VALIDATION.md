@@ -2,7 +2,7 @@
 
 - Existing GitHub repository inspected through the authorized connection; selected `daily-briefing-launch` with user confirmation. Existing website application files are unchanged.
 - Branch: `codex/native-daily-briefing`.
-- `swift test --package-path native` using official Swift 6.0.3 Linux toolchain: **9 tests passed, 0 failures**. These exercise the same Foundation scheduling/freshness/conflict/policy models compiled into all native targets.
+- `swift test --package-path native` using official Swift 6.0.3 Linux toolchain: **10 tests passed, 0 failures**. These exercise the same Foundation scheduling/freshness/conflict/policy models compiled into all native targets.
 - `swiftc -frontend -parse` on all **20 Swift files**: passed. Syntax parsing is not Apple framework type checking.
 - `python3 native/validate_project.py`: passed; **102 PBX objects**, four targets, references/membership, Info/entitlement/privacy plists, shared schemes, deterministic generation.
 - Existing `node ci/smoke.mjs`: **27 checks passed, 0 failed** before adding native build products.
@@ -32,3 +32,5 @@ xcodebuild -project native/DailyBriefing.xcodeproj -scheme DailyBriefingWatch \
 ```
 
 Before release, test first-run/denied/revoked permissions, all-disconnected/partial/offline generation, force quit and relaunch, manual overnight shifts, settings changes and pending notification replacement, midnight/time-zone changes, read/pin/history retention, widget cache expiry/deep links, Dynamic Type/VoiceOver, AI consent revocation/endpoint changes, CloudKit migration, Watch pairing and Live Activity expiry.
+
+The additional credential-origin regression verifies that AI and monitoring secrets are separate, cannot cross hosts or ports, and reject HTTP endpoints and credentials embedded in URLs. Provider tokens are now read from origin-scoped Keychain entries.

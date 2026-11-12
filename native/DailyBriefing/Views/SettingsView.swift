@@ -72,7 +72,7 @@ struct SettingsView: View {
                 TextField("AI HTTPS endpoint", text: $settings.value.aiEndpoint).textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
                     .onChange(of: settings.value.aiEndpoint) { _, _ in settings.value.aiConsent = false }
                 SecureField("AI bearer token", text: $aiToken)
-                Button("Save AI token to Keychain") { saveSecret(aiToken, account: "ai"); aiToken = "" }
+                Button("Save AI token to Keychain") { saveSecret(aiToken, service: "ai", endpoint: settings.value.aiEndpoint); aiToken = "" }
                 Toggle("Allow sending my briefing to this AI", isOn: $settings.value.aiConsent)
                 Text("When enabled, fresh visible sections—including private calendar and reminder content, and email if connected—are sent to your endpoint to generate a summary. Review the provider's retention policy. Turning this off stops future uploads; stored provider copies must be deleted with that provider.").font(.caption).foregroundStyle(.secondary)
             } header: { Text("Optional AI · G.I.L.E.S. compatible boundary") }
@@ -93,7 +93,7 @@ struct SettingsView: View {
             Section("Head Quarter monitoring") {
                 TextField("Monitoring HTTPS endpoint", text: $settings.value.monitoringEndpoint).textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
                 SecureField("Monitoring bearer token", text: $monitorToken)
-                Button("Save monitoring token") { saveSecret(monitorToken, account: "monitoring"); monitorToken = "" }
+                Button("Save monitoring token") { saveSecret(monitorToken, service: "monitoring", endpoint: settings.value.monitoringEndpoint); monitorToken = "" }
                 Button("Send health report") {
                     guard let endpoint = URL(string: settings.value.monitoringEndpoint) else { status = "Configure a compatible HTTPS endpoint first."; return }
                     Task { do { try await HTTPSHealthReporter(endpoint: endpoint).send(controller.healthReport); status = "Health report accepted." } catch { status = error.localizedDescription } }
@@ -158,7 +158,10 @@ struct SettingsView: View {
             settings.value[keyPath: keyPath] = (c.hour ?? 0) * 60 + (c.minute ?? 0)
         })
     }
-    private func saveSecret(_ value: String, account: String) {
+    private func saveSecret(_ value: String, service: String, endpoint: String) {
+        guard let url = URL(string: endpoint), let account = CredentialScope.account(service: service, endpoint: url) else {
+            status = "Enter a valid HTTPS endpoint before saving its token."; return
+        }
         do { try KeychainStore.save(value, account: account); status = value.isEmpty ? "Token removed." : "Token saved securely." }
         catch { status = error.localizedDescription }
     }

@@ -161,3 +161,13 @@ public struct NotificationPolicy: Codable, Sendable {
     }
     public static func identifier(for date: Date) -> String { "briefing.\(Int(date.timeIntervalSince1970))" }
 }
+
+public enum CredentialScope {
+    /// Secrets belong to an HTTPS origin, never to an arbitrary replacement server.
+    public static func account(service: String, endpoint: URL) -> String? {
+        guard endpoint.scheme?.lowercased() == "https", let host = endpoint.host?.lowercased(),
+              !host.isEmpty, endpoint.user == nil, endpoint.password == nil else { return nil }
+        let port = endpoint.port ?? 443
+        return "\(service):https://\(host):\(port)"
+    }
+}

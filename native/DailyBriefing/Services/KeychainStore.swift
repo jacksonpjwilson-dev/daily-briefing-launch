@@ -13,6 +13,10 @@ enum KeychainStore {
         let status = SecItemAdd(attributes as CFDictionary, nil)
         guard status == errSecSuccess else { throw NSError(domain: NSOSStatusErrorDomain, code: Int(status)) }
     }
+    static func read(service: String, endpoint: URL) -> String? {
+        guard let account = CredentialScope.account(service: service, endpoint: endpoint) else { return nil }
+        return read(account: account)
+    }
     static func read(account: String) -> String? {
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: "DailyBriefing", kSecAttrAccount as String: account,

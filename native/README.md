@@ -46,7 +46,7 @@ Replace `com.example.DailyBriefing`, `group.com.example.DailyBriefing`, and `iCl
 
 ## Provider contracts
 
-AI: enter an HTTPS endpoint in Settings. A POST includes `{ "sections": [BriefingSection], "length": "Quick" | "Standard" | "Detailed" }`. Return HTTP 200 and `{ "summary": "..." }`. The optional bearer token is kept in Keychain and sent only to that endpoint. The user explicitly opts in to sending private source content. Disabling consent stops future uploads but cannot delete provider-held copies. Consent is reset if the endpoint changes.
+AI: enter an HTTPS endpoint in Settings. A POST includes `{ "sections": [BriefingSection], "length": "Quick" | "Standard" | "Detailed" }`. Return HTTP 200 and `{ "summary": "..." }`. The optional bearer token is kept in Keychain under its HTTPS origin and service. Switching hosts or ports cannot reuse the previous server's token. The user explicitly opts in to sending private source content. Disabling consent stops future uploads but cannot delete provider-held copies. Consent is reset if the endpoint changes.
 
 Monitoring: set an HTTPS endpoint and bearer token. Tap **Send health report**. The JSON contains `lastSuccessfulGeneration`, `nextScheduledBriefing`, provider `section/state/lastRefresh`, integration and delivery error strings, failed attempt count, version and build. Dates use Foundation's default Codable date encoding (seconds since 2001-01-01 UTC); the same applies to the AI contract and cached snapshot format. An accepted request confirms HTTP delivery, not full ecosystem compatibility. Failed provider fetches are distinct from disconnected, denied, missing-data, stale and offline states.
 

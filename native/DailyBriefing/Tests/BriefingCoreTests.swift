@@ -55,6 +55,16 @@ final class BriefingCoreTests: XCTestCase {
         XCTAssertEqual(GenerationPhase.result(for: [ready]), .complete)
         XCTAssertEqual(GenerationPhase.result(for: [ready, missing]), .partial)
     }
+    func testCredentialsStayWithTheirOrigin() {
+        let account = CredentialScope.account(service: "ai", endpoint: URL(string: "https://one.example/summary")!)
+        XCTAssertNotNil(account)
+        XCTAssertEqual(account, CredentialScope.account(service: "ai", endpoint: URL(string: "https://one.example:443/other-path")!))
+        XCTAssertNotEqual(account, CredentialScope.account(service: "ai", endpoint: URL(string: "https://two.example/summary")!))
+        XCTAssertNotEqual(account, CredentialScope.account(service: "ai", endpoint: URL(string: "https://one.example:8443/summary")!))
+        XCTAssertNotEqual(account, CredentialScope.account(service: "monitoring", endpoint: URL(string: "https://one.example/health")!))
+        XCTAssertNil(CredentialScope.account(service: "ai", endpoint: URL(string: "http://one.example/summary")!))
+        XCTAssertNil(CredentialScope.account(service: "ai", endpoint: URL(string: "https://user:secret@one.example/summary")!))
+    }
     func testSharedTextLabelsExpiredSources() {
         let old = Date().addingTimeInterval(-7200)
         let section = BriefingSection(kind: .weather, state: .ready, fetchedAt: old, expiresAt: old.addingTimeInterval(1800),
