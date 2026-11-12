@@ -9,7 +9,7 @@ permissions:
   contents: read
 jobs:
   core:
-    runs-on: macos-15
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
       - name: Test scheduling, freshness, conflicts and delivery policy
@@ -17,7 +17,7 @@ jobs:
       - name: Validate generated project
         run: python3 native/validate_project.py
   apple-build:
-    runs-on: macos-15
+    runs-on: macos-15-intel
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
