@@ -64,7 +64,7 @@ enum HTTP {
 struct WeatherProvider {
     func fetch(location: CLLocation?, fahrenheit: Bool) async throws -> BriefingSection {
         guard Bundle.main.object(forInfoDictionaryKey: "WeatherKitConfigured") as? Bool == true else {
-            return BriefingSection(kind: .weather, state: .disconnected, message: "Enable WeatherKit on your signed App ID and set WeatherKitConfigured in App-Info.plist. See native setup instructions.")
+            return BriefingSection(kind: .weather, state: .disconnected, message: "Weather is not connected. Complete the weather setup described in Settings before requesting local forecasts.")
         }
         guard let location, abs(location.timestamp.timeIntervalSinceNow) < 3600 else {
             return BriefingSection(kind: .weather, state: .missingData, message: "Enable location in Connections to request local weather.")

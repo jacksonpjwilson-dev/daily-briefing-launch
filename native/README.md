@@ -58,7 +58,7 @@ Remote briefing/push: this repository contains the local app, not a deployed sch
 
 ## Limits to finish before a production release
 
-- Apple-framework builds, simulator UI testing, CloudKit sync, WeatherKit entitlement verification and physical-device integration tests require macOS/Xcode or a configured CI runner. See `VALIDATION.md` for this session's actual results.
+- Unsigned Apple-framework builds and an iPhone simulator startup smoke check passed on GitHub macOS CI. Interactive UI testing with authorized data, CloudKit sync, WeatherKit entitlement verification and physical-device integration still require configured signing and devices. See `VALIDATION.md` for the exact results.
 - iOS background refresh and widget updates are opportunistic. Exact preparation/delivery needs an authenticated server. The current local notifications are reminders only. Quiet hours skip reminders rather than shifting them.
 - A Live Activity cannot be guaranteed to end at the exact instant of a shift while the app is suspended without a configured ActivityKit push server. Stale date limits freshness, foreground/background refresh ends expired activities, and the system imposes its own maximum duration. Commute and live-game activities are not implemented without reliable source data.
 - Email OAuth, licensed sports retrieval/standings/game alerts, remote push, severe-weather push alerts, and remote generation remain integration work. Weather is for current location; scheduled-location geocoding/travel forecasts are not implemented. News is a single configurable RSS feed rather than a feed aggregator. AI summary lengths are passed as preferences to the configured provider, not guaranteed reading durations.

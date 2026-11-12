@@ -82,7 +82,7 @@ struct DashboardView: View {
             if let weather = controller.snapshot?.sections.first(where: { $0.kind == .weather }), weather.isFresh(at: Date()), let first = weather.items.first {
                 Label(first.title, systemImage: "cloud.sun.fill").font(.subheadline)
             }
-            if let next = controller.snapshot?.nextDelivery { Text("Next briefing reminder \(next.formatted(date: .abbreviated, time: .shortened))").font(.caption).foregroundStyle(.secondary) }
+            if let next = controller.snapshot?.nextDelivery { Text("Next briefing time \(next.formatted(date: .abbreviated, time: .shortened))").font(.caption).foregroundStyle(.secondary) }
         }.frame(maxWidth: .infinity, alignment: .leading).padding(22)
             .background(LinearGradient(colors: [.cyan.opacity(0.2), .indigo.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 28))
     }

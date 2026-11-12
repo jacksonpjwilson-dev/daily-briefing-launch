@@ -1,4 +1,4 @@
-# Validation — 2026-11-11
+# Validation — updated 2026-11-12
 
 - Existing GitHub repository inspected through the authorized connection; selected `daily-briefing-launch` with user confirmation. Existing website application files are unchanged.
 - Branch: `codex/native-daily-briefing`.
@@ -12,7 +12,11 @@
 
 The environment is Linux with no Xcode or Apple SDKs. A Docker Swift test attempt failed because the image exhausted disk space; that image was removed, the workspace recovered, and tests subsequently passed using a directly installed official Swift toolchain with writable caches.
 
-The checked-in `.github/workflows/native.yml` adds macOS core tests and unsigned simulator builds for iPhone and Watch. CI results will be recorded here when available. No simulator/device run, signed archive, WeatherKit entitlement, CloudKit sync, APNs delivery, OAuth connection, or physical Watch integration has been verified in this Linux session.
+GitHub Actions run [43066174548](https://github.com/jacksonpjwilson-dev/daily-briefing-launch/actions/runs/43066174548), commit `4e9053c`, confirmed successful unsigned builds of the iPhone app, iPhone WidgetKit/Live Activity extension, watch app, and watch widget extension. The separate Watch scheme also built successfully. The real iPhone app was installed and launched in a simulator, remained running throughout the smoke check, and produced a screenshot. Visual inspection confirmed the dashboard renders its greeting, next planned briefing time, cards, source connection states, and navigation without fabricated connected data.
+
+The first workflow attempt was marked failed because the separate core job could not acquire a hosted macOS runner after multiple attempts; the successful Apple build and simulator check were unaffected. The core job was rerun on November 12. Nine core tests had already passed locally with Swift 6.0.3; earlier macOS core jobs also passed before the final regression case was added.
+
+No signed archive, WeatherKit entitlement, CloudKit sync, APNs delivery, OAuth connection, or physical Watch integration has been verified. The simulator smoke check confirms startup/process survival and visual rendering; it does not replace interactive tests of authorized calendar data or device capabilities.
 
 On macOS, run:
 
