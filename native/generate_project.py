@@ -55,7 +55,7 @@ def configlist(name, common, extra=None):
                          'SWIFT_ACTIVE_COMPILATION_CONDITIONS':'DEBUG' if config=='Debug' else ''})
         ids.append(obj(f'{name}:{config}', 'isa = XCBuildConfiguration; name = '+q(config)+'; buildSettings = {' + ''.join(f'{k} = {q(v)};' for k,v in settings.items()) + '};'))
     return obj(name+':configlist', f'isa = XCConfigurationList; buildConfigurations = {array(ids)}; defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;')
-core = ['DailyBriefing/Core/BriefingCore.swift','DailyBriefing/Shared/SharedSnapshot.swift']
+core = [p.relative_to(ROOT).as_posix() for p in sorted((SOURCE/'Core').glob('*.swift'))] + ['DailyBriefing/Shared/SharedSnapshot.swift']
 target_defs = {
     'DailyBriefing': {'sources': core + ['DailyBriefing/Shared/ShiftActivityAttributes.swift'] + [p.relative_to(ROOT).as_posix() for p in files if p.suffix=='.swift' and p.parent.name in ['App','Services','Views']], 'type':'com.apple.product-type.application','ext':'app','bundle':'com.example.DailyBriefing','info':'App','watch':False},
     'DailyBriefingWidgets': {'sources': core + ['DailyBriefing/Shared/ShiftActivityAttributes.swift','DailyBriefing/Widgets/BriefingWidgets.swift'], 'type':'com.apple.product-type.app-extension','ext':'appex','bundle':'com.example.DailyBriefing.widgets','info':'Widgets','watch':False},

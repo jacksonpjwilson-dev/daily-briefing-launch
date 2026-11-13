@@ -6,7 +6,7 @@ import WidgetKit
 @MainActor @Observable final class WatchSnapshotStore: NSObject, WCSessionDelegate {
     var snapshot: BriefingSnapshot?
     override init() {
-        snapshot = UserDefaults.standard.data(forKey: "watch.snapshot").flatMap { try? JSONDecoder().decode(BriefingSnapshot.self, from: $0) }
+        snapshot = SharedSnapshot.read()
         super.init()
         if WCSession.isSupported() { WCSession.default.delegate = self; WCSession.default.activate() }
     }
@@ -17,8 +17,20 @@ import WidgetKit
         if let data = applicationContext["snapshot"] as? Data { receive(data) }
     }
     nonisolated private func receive(_ data: Data) {
-        guard let value = try? JSONDecoder().decode(BriefingSnapshot.self, from: data) else { return }
-        Task { @MainActor in self.snapshot = value; UserDefaults.standard.set(data, forKey: "watch.snapshot"); try? SharedSnapshot.write(value); WidgetCenter.shared.reloadAllTimelines() }
+        Task { @MainActor in
+            do {
+                let document = try JSONDecoder().decode(SharedCacheDocument.self, from: data)
+                guard document.schemaVersion == 2 else { throw StoredDataError.unsupportedVersion(document.schemaVersion) }
+                let visible = document.policy.applying(to: document.snapshot)
+                try SharedSnapshot.write(visible, policy: document.policy)
+                self.snapshot = visible
+            } catch {
+                // Unknown/corrupt privacy messages must not leave an older private cache visible.
+                try? SharedSnapshot.replacePolicy(SnapshotAccessPolicy(enabled: []))
+                self.snapshot = nil
+            }
+            WidgetCenter.shared.reloadAllTimelines()
+        }
     }
 }
 @main @MainActor struct DailyBriefingWatchApp: App {

@@ -37,7 +37,7 @@ import BackgroundTasks
         .backgroundTask(.appRefresh(BackgroundRefresh.identifier)) { await performBackgroundRefresh() }
     }
     private func performBackgroundRefresh() async {
-        if let controller { await controller.refresh() }
+        if let controller { await controller.refresh(background: true) }
     }
 }
 struct RootView: View {
@@ -58,7 +58,7 @@ struct RootView: View {
         .task {
             controller.calendar.reload()
             IntentRouter.consume(into: controller)
-            if controller.needsRefresh { await controller.refresh() }
+            await controller.tick()
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
@@ -66,16 +66,29 @@ struct RootView: View {
                 controller.location.requestIfAuthorized()
                 Task {
                     await ShiftActivities.endExpired()
-                    if controller.needsRefresh { await controller.refresh() }
+                    await controller.tick()
                 }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .EKEventStoreChanged)) { _ in
-            Task { await controller.refresh(only: .schedule) }
+            Task { await controller.sourceUpdated([.schedule, .tasks]) }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name.NSSystemTimeZoneDidChange)) { _ in Task { await controller.refresh() } }
         .onReceive(NotificationCenter.default.publisher(for: IntentRouter.notification)) { _ in
             selectedTab = 0; IntentRouter.consume(into: controller)
+        }
+        .onChange(of: controller.location.status) { _, _ in Task { await controller.tick() } }
+        .onChange(of: controller.location.location?.timestamp) { _, _ in
+            if controller.accessPolicy.enabled.contains(.weather) { Task { await controller.sourceUpdated([.weather]) } }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in Task { await controller.tick() } }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in Task { await controller.tick() } }
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            while !Task.isCancelled {
+                do { try await Task.sleep(nanoseconds: 60_000_000_000) } catch { break }
+                await controller.tick()
+            }
         }
         .onOpenURL { url in
             guard url.scheme == "dailybriefing" else { return }

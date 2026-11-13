@@ -16,9 +16,9 @@ import WidgetKit
     static func schedule(dates: [Date], preferences: AppPreferences) async throws {
         let center = UNUserNotificationCenter.current()
         let pending = await center.pendingNotificationRequests()
-        center.removePendingNotificationRequests(withIdentifiers: pending.filter { $0.identifier.hasPrefix("briefing.") }.map(\.identifier))
-        guard preferences.notificationsEnabled else { return }
-        for date in dates.prefix(7) where preferences.notificationPolicy.allows(date, calendar: .autoupdatingCurrent) {
+        let plan = NotificationPlan.make(dates: dates, enabled: preferences.notificationsEnabled, quiet: preferences.notificationPolicy,
+            now: Date(), calendar: .autoupdatingCurrent, pendingIDs: pending.map(\.identifier))
+        for date in plan.dates {
             let content = UNMutableNotificationContent()
             content.title = "Time for your Daily Briefing"
             content.body = "Open to refresh your briefing. Cached information is available offline."
@@ -27,10 +27,12 @@ import WidgetKit
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, date.timeIntervalSinceNow), repeats: false)
             try await center.add(UNNotificationRequest(identifier: NotificationPolicy.identifier(for: date), content: content, trigger: trigger))
         }
+        center.removePendingNotificationRequests(withIdentifiers: plan.obsoleteIDs)
     }
 }
 @MainActor enum BackgroundRefresh {
     static let identifier = "com.example.DailyBriefing.refresh"
+    static func cancel() { BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: identifier) }
     static func schedule(at date: Date?) throws {
         BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: identifier)
         let request = BGAppRefreshTaskRequest(identifier: identifier)
@@ -76,20 +78,29 @@ import WidgetKit
     }
 }
 // App-to-Watch transfer is encrypted by the system. The watch keeps only the latest snapshot.
-final class WatchBridge: NSObject, WCSessionDelegate {
+@MainActor final class WatchBridge: NSObject, WCSessionDelegate {
     static let shared = WatchBridge()
+    private var pending: Data?
     override init() {
         super.init()
         if WCSession.isSupported() { WCSession.default.delegate = self; WCSession.default.activate() }
     }
-    func publish(_ snapshot: BriefingSnapshot) throws {
+    func publish(_ snapshot: BriefingSnapshot, policy: SnapshotAccessPolicy) throws {
+        pending = try JSONEncoder().encode(SharedCacheDocument(policy: policy, snapshot: policy.applying(to: snapshot)))
+        try sendPending()
+    }
+    private func sendPending() throws {
         guard WCSession.isSupported(), WCSession.default.activationState == .activated,
               WCSession.default.isPaired, WCSession.default.isWatchAppInstalled else { return }
-        try WCSession.default.updateApplicationContext(["snapshot": JSONEncoder().encode(snapshot)])
+        let data = pending ?? SharedSnapshot.readDocument().flatMap { try? JSONEncoder().encode($0) }
+        guard let data else { return }
+        try WCSession.default.updateApplicationContext(["snapshot": data]); pending = nil
     }
-    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
-    func sessionDidBecomeInactive(_ session: WCSession) {}
-    func sessionDidDeactivate(_ session: WCSession) { session.activate() }
+    nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        Task { @MainActor in try? self.sendPending() }
+    }
+    nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
+    nonisolated func sessionDidDeactivate(_ session: WCSession) { session.activate() }
 }
 struct HealthReport: Encodable {
     var lastSuccessfulGeneration: Date?

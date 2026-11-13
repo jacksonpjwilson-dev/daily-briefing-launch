@@ -32,7 +32,7 @@ struct DashboardView: View {
                     }
                     audioControls(snapshot)
                     ForEach(snapshot.sections.filter { !settings.value.hiddenSections.contains($0.kind) }) { raw in
-                        let section = raw.assessed(at: Date())
+                        let section = raw.assessed(at: controller.now)
                         SectionCard(section: section, expanded: expanded.contains(section.kind),
                             isRead: snapshot.readSections.contains(section.kind), pinned: snapshot.pinnedItems,
                             toggleExpanded: { withAnimation { if !expanded.insert(section.kind).inserted { expanded.remove(section.kind) } } },
@@ -68,8 +68,11 @@ struct DashboardView: View {
     }
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(Date.now.formatted(.dateTime.weekday(.wide).month(.wide).day()).uppercased())
+            Text(controller.now.formatted(.dateTime.weekday(.wide).month(.wide).day()).uppercased())
                 .font(.caption.weight(.semibold)).tracking(2).foregroundStyle(.secondary)
+            if let target = controller.snapshot?.target, !Calendar.current.isDate(target.dayStart, inSameDayAs: controller.now) {
+                Text("Briefing for \(target.dayStart.formatted(date: .complete, time: .omitted))").font(.subheadline).foregroundStyle(.secondary)
+            }
             Text("\(greeting),\n\(settings.value.name.isEmpty ? "welcome" : settings.value.name).")
                 .font(.system(.largeTitle, design: .rounded, weight: .bold))
             if let next = controller.upcomingEvents.first(where: { ($0.date ?? .distantPast) > Date() }) {
@@ -89,14 +92,14 @@ struct DashboardView: View {
     private var greeting: String { let h = Calendar.current.component(.hour, from: Date()); return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening" }
     private func audioControls(_ snapshot: BriefingSnapshot) -> some View {
         HStack(spacing: 18) {
-            Button { audioSection = 0; controller.speech.play(snapshot.sections.map { "\($0.kind.title). \($0.assessed(at: Date()).state.rawValue). " + $0.items.map(\.title).joined(separator: ". ") }.joined(separator: "\n"), preferences: settings.value) } label: { Label("Listen", systemImage: "play.fill") }
+            Button { audioSection = 0; controller.speech.play(snapshot.sections.map { $0.spokenText(at: Date()) }.joined(separator: "\n"), preferences: settings.value) } label: { Label("Listen", systemImage: "play.fill") }
             Button { controller.speech.pause() } label: { Image(systemName: "pause.fill") }.accessibilityLabel("Pause speech")
             Button { controller.speech.resume() } label: { Image(systemName: "playpause.fill") }.accessibilityLabel("Resume speech")
             Button {
                 guard !snapshot.sections.isEmpty else { return }
                 audioSection = (audioSection + 1) % snapshot.sections.count
                 let section = snapshot.sections[audioSection]
-                controller.speech.play(section.kind.title + ". " + section.items.map(\.title).joined(separator: ". "), preferences: settings.value)
+                controller.speech.play(section.spokenText(at: Date()), preferences: settings.value)
             } label: { Image(systemName: "forward.end.fill") }.accessibilityLabel("Next section")
             Button { controller.speech.stop() } label: { Image(systemName: "stop.fill") }.accessibilityLabel("Stop speech")
         }.font(.subheadline).buttonStyle(.borderless)
@@ -167,6 +170,7 @@ struct ItemRow: View {
                 Text(item.title).font(.subheadline.weight(.semibold))
                 if pinned { Image(systemName: "pin.fill").font(.caption).foregroundStyle(.orange) }
             }
+            if item.sourceExpiresAt.map({ $0 <= Date() }) == true { Text("Source report is expired or its validity is unknown").font(.caption).foregroundStyle(.orange) }
             if !item.detail.isEmpty { Text(item.detail).font(.subheadline).foregroundStyle(.secondary).textSelection(.enabled) }
             HStack {
                 Text(item.source)

@@ -2,40 +2,43 @@ import Observation
 import Foundation
 import SwiftUI
 
-struct AppPreferences: Codable {
-    var name = "Jackson"
-    var scheduling = SchedulingPreferences()
-    var notificationPolicy = NotificationPolicy()
-    var notificationsEnabled = false
-    var calendarIDs: Set<String> = []
-    var workCalendarID = ""
-    var scheduleSource = "calendar"
-    var manualShifts: [ManualShift] = []
-    var sectionOrder = SectionKind.allCases
-    var hiddenSections: Set<SectionKind> = []
-    var newsTopics = "World, Technology, Aviation"
-    var newsFeed = "https://feeds.bbci.co.uk/news/rss.xml"
-    var airports = "CYKF"
-    var teams = "Philadelphia 76ers, San Antonio Spurs"
-    var fahrenheit = false
-    var appearance = "system"
-    var cloudSync = false
-    var summaryLength = "Quick"
-    var aiEndpoint = ""
-    var aiConsent = false
-    var monitoringEndpoint = ""
-    var speechRate: Float = 0.45
-    var voiceID = ""
-    var widgetSection = SectionKind.schedule
-    var retentionDays = 30
-}
 @MainActor @Observable final class SettingsStore {
-    var value: AppPreferences { didSet { save() } }
-    init() {
-        value = UserDefaults.standard.data(forKey: "preferences.v1")
-            .flatMap { try? JSONDecoder().decode(AppPreferences.self, from: $0) } ?? AppPreferences()
+    private let persistence: PreferencesPersistence
+    private var stored: AppPreferences
+    private(set) var sourceVersions: [String: UUID]
+    private(set) var annotations: AnnotationLedger
+    private(set) var recoveryRequired: Bool
+    private(set) var recoveryNotice: String?
+    @ObservationIgnored var onChange: ((AppPreferences, AppPreferences) -> Void)?
+    var value: AppPreferences {
+        get { stored }
+        set {
+            let old = stored
+            persistence.save(newValue); synchronize()
+            onChange?(old, stored)
+        }
     }
-    private func save() {
-        if let data = try? JSONEncoder().encode(value) { UserDefaults.standard.set(data, forKey: "preferences.v1") }
+    init(defaults: UserDefaults = .standard) {
+        let repository = PreferencesPersistence(defaults: defaults); persistence = repository
+        stored = repository.document.preferences; sourceVersions = repository.document.sourceVersions
+        annotations = repository.document.annotations
+        recoveryRequired = repository.recoveryRequired; recoveryNotice = repository.notice
+    }
+    var annotationsSeeded: Bool { persistence.document.annotationsSeeded }
+    func seedAnnotations(_ snapshots: [BriefingSnapshot]) { persistence.seedAnnotations(snapshots); synchronize() }
+    func recordAnnotations(_ snapshot: BriefingSnapshot) { persistence.recordAnnotations(snapshot); synchronize() }
+    func invalidate(_ kinds: Set<SectionKind>) { persistence.invalidate(kinds); synchronize() }
+    func restoreLastGood() {
+        let old = stored
+        if persistence.restoreLastGood() { synchronize(); onChange?(old, stored) }
+        else { synchronize() }
+    }
+    func keepCurrentSettings() {
+        let old = stored; persistence.keepCurrent(); synchronize(); onChange?(old, stored)
+    }
+    private func synchronize() {
+        stored = persistence.document.preferences; sourceVersions = persistence.document.sourceVersions
+        annotations = persistence.document.annotations
+        recoveryRequired = persistence.recoveryRequired; recoveryNotice = persistence.notice
     }
 }

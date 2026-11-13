@@ -42,6 +42,10 @@ enum HTTP {
     var location: CLLocation?
     var status: CLAuthorizationStatus = .notDetermined
     override init() { super.init(); manager.delegate = self; status = manager.authorizationStatus }
+    func reloadAuthorization() {
+        status = manager.authorizationStatus
+        if ![.authorizedAlways, .authorizedWhenInUse].contains(status) { location = nil }
+    }
     func requestIfAuthorized() {
         if [.authorizedAlways, .authorizedWhenInUse].contains(manager.authorizationStatus) { manager.requestLocation() }
     }
@@ -62,7 +66,7 @@ enum HTTP {
     }
 }
 struct WeatherProvider {
-    func fetch(location: CLLocation?, fahrenheit: Bool) async throws -> BriefingSection {
+    func fetch(location: CLLocation?, fahrenheit: Bool, targetDay: Date = Date()) async throws -> BriefingSection {
         guard Bundle.main.object(forInfoDictionaryKey: "WeatherKitConfigured") as? Bool == true else {
             return BriefingSection(kind: .weather, state: .disconnected, message: "Weather is not connected. Complete the weather setup described in Settings before requesting local forecasts.")
         }
@@ -73,45 +77,45 @@ struct WeatherProvider {
         let unit: UnitTemperature = fahrenheit ? .fahrenheit : .celsius
         let formatter = MeasurementFormatter(); formatter.unitOptions = .providedUnit
         func temperature(_ value: Measurement<UnitTemperature>) -> String { formatter.string(from: value.converted(to: unit)) }
-        var items = [BriefingItem(title: "\(temperature(weather.currentWeather.temperature)) · \(weather.currentWeather.condition.description)",
+        var items = [BriefingItem(id: "weather.current", title: "\(temperature(weather.currentWeather.temperature)) · \(weather.currentWeather.condition.description)",
             detail: "Wind \(weather.currentWeather.wind.speed.formatted())", date: weather.currentWeather.date, source: "Apple Weather")]
-        if let day = weather.dailyForecast.forecast.first {
-            items.append(BriefingItem(title: "High \(temperature(day.highTemperature)) · Low \(temperature(day.lowTemperature))",
+        if let day = weather.dailyForecast.forecast.first(where: { Calendar.autoupdatingCurrent.isDate($0.date, inSameDayAs: targetDay) }) {
+            items.append(BriefingItem(id: "weather.day.\(day.date.timeIntervalSince1970)", title: "High \(temperature(day.highTemperature)) · Low \(temperature(day.lowTemperature))",
                 detail: "Precipitation \(Int(day.precipitationChance * 100))%", date: day.date, source: "Apple Weather"))
         }
-        items += weather.hourlyForecast.forecast.filter { $0.date >= Date() }.prefix(6).map {
-            BriefingItem(title: temperature($0.temperature), detail: "\($0.condition.description) · Rain \(Int($0.precipitationChance * 100))%", date: $0.date, source: "Apple Weather")
+        items += weather.hourlyForecast.forecast.filter { $0.date >= Date() && Calendar.autoupdatingCurrent.isDate($0.date, inSameDayAs: targetDay) }.prefix(6).map {
+            BriefingItem(id: "weather.hour.\($0.date.timeIntervalSince1970)", title: temperature($0.temperature), detail: "\($0.condition.description) · Rain \(Int($0.precipitationChance * 100))%", date: $0.date, source: "Apple Weather")
         }
         if let alerts = weather.weatherAlerts {
-            items += alerts.map { BriefingItem(title: $0.summary, detail: "Weather alert", url: $0.detailsURL, source: $0.source) }
+            items += alerts.map { BriefingItem(id: "weather.alert.\($0.detailsURL.absoluteString)", title: $0.summary, detail: "Weather alert", url: $0.detailsURL, source: $0.source) }
         }
         let attribution = try await WeatherService.shared.attribution
-        items.append(BriefingItem(title: "Weather attribution and legal information", url: attribution.legalPageURL, source: "Apple Weather", attributionImageURL: attribution.combinedMarkDarkURL))
+        items.append(BriefingItem(id: "weather.attribution", title: "Weather attribution and legal information", url: attribution.legalPageURL, source: "Apple Weather", attributionImageURL: attribution.combinedMarkDarkURL))
         return BriefingSection(kind: .weather, state: Date().timeIntervalSince(weather.currentWeather.date) < 3600 ? .ready : .stale, fetchedAt: Date(), expiresAt: min(Date().addingTimeInterval(1800), weather.currentWeather.date.addingTimeInterval(3600)), items: items)
     }
 }
 struct AviationProvider: SectionProvider {
     let kind = SectionKind.aviation
-    struct Report: Decodable { var icaoId: String?; var rawOb: String?; var rawTAF: String?; var reportTime: String?; var issueTime: String? }
     func fetch(preferences: AppPreferences) async throws -> BriefingSection {
         let airports = preferences.airports.uppercased().split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { $0.range(of: "^[A-Z]{4}$", options: .regularExpression) != nil }.prefix(5)
         guard !airports.isEmpty else { return BriefingSection(kind: kind, state: .missingData, message: "Configure an ICAO airport code.") }
-        var items: [BriefingItem] = []
-        for product in ["metar", "taf"] {
-            var parts = URLComponents(string: "https://aviationweather.gov/api/data/\(product)")!
-            parts.queryItems = [URLQueryItem(name: "ids", value: airports.joined(separator: ",")), URLQueryItem(name: "format", value: "json")]
-            let reports = try JSONDecoder().decode([Report].self, from: await HTTP.data(from: parts.url!))
-            items += reports.compactMap { report in
-                guard let raw = report.rawOb ?? report.rawTAF else { return nil }
-                return BriefingItem(title: "\(report.icaoId ?? "Airport") \(product.uppercased())", detail: raw,
-                    date: (report.reportTime ?? report.issueTime).flatMap { ISO8601DateFormatter().date(from: $0) },
-                    url: URL(string: "https://aviationweather.gov/"), source: "NOAA Aviation Weather Center")
+        let ids = airports.joined(separator: ",")
+        return await withTaskGroup(of: AviationProductResult.self) { group in
+            for product in ["metar", "taf"] {
+                group.addTask {
+                    do {
+                        var parts = URLComponents(string: "https://aviationweather.gov/api/data/\(product)")!
+                        parts.queryItems = [URLQueryItem(name: "ids", value: ids), URLQueryItem(name: "format", value: "json")]
+                        let records = try JSONDecoder().decode([AviationReport].self, from: await HTTP.data(from: parts.url!))
+                        return AviationProductResult(product: product, records: records)
+                    } catch { return AviationProductResult(product: product, error: error.localizedDescription) }
+                }
             }
+            var results: [AviationProductResult] = []
+            for await result in group { results.append(result) }
+            return AviationReports.section(results.sorted { $0.product < $1.product }, now: Date())
         }
-        return BriefingSection(kind: kind, state: items.isEmpty ? .missingData : .ready,
-            message: "Reference only. Use official operational briefing products for flight decisions. Check report issue and validity times.",
-            fetchedAt: Date(), expiresAt: Date().addingTimeInterval(1800), items: items)
     }
 }
 struct NewsProvider: SectionProvider {
@@ -161,7 +165,7 @@ struct HTTPSummaryProvider: AISummaryProvider {
         var request = URLRequest(url: endpoint); request.httpMethod = "POST"; request.timeoutInterval = 30
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token = KeychainStore.read(service: "ai", endpoint: endpoint) { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
-        request.httpBody = try JSONEncoder().encode(Request(sections: sections.filter { $0.kind != .summary && $0.isFresh(at: Date()) && !$0.isGenerated }, length: length))
+        request.httpBody = try JSONEncoder().encode(Request(sections: sections.filter { $0.kind != .summary && $0.isFresh(at: Date()) && !$0.isGenerated }.map { section in var section = section; section.items.removeAll { $0.sourceExpiresAt.map { $0 <= Date() } == true }; return section }, length: length))
         let (data, response) = try await URLSession.shared.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw ProviderError.response((response as? HTTPURLResponse)?.statusCode ?? 0) }
         let result = try JSONDecoder().decode(Response.self, from: data)

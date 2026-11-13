@@ -11,6 +11,15 @@ struct SettingsView: View {
     @State private var monitorToken = ""
     var body: some View {
         Form {
+            if let notice = settings.recoveryNotice {
+                Section("Settings recovery") {
+                    Text(notice).font(.caption)
+                    if settings.recoveryRequired {
+                        Button("Restore last readable settings") { settings.restoreLastGood() }
+                        Button("Keep current settings; preserve original recovery data") { settings.keepCurrentSettings() }
+                    }
+                }
+            }
             Section("Personalize") {
                 TextField("Name", text: $settings.value.name)
                 Picker("Appearance", selection: $settings.value.appearance) {
@@ -86,7 +95,7 @@ struct SettingsView: View {
             Section {
                 Toggle("iCloud sync (restart required)", isOn: $settings.value.cloudSync)
                 Stepper("Keep history for \(settings.value.retentionDays) days", value: $settings.value.retentionDays, in: 7...365, step: 1)
-                Text("Local storage is the default. iCloud needs your own signed CloudKit container and entitlements. Configure the identifiers in the native project before enabling it. Widgets and Apple Watch may display briefing content; hide sensitive sections before refreshing.").font(.caption).foregroundStyle(.secondary)
+                Text("Unreadable and migration-recovery history records are retained for recovery. Local storage is the default. iCloud needs your own signed CloudKit container and entitlements. Configure the identifiers in the native project before enabling it. Widgets and Apple Watch may display briefing content; hide sensitive sections before refreshing.").font(.caption).foregroundStyle(.secondary)
                 Button("Open system privacy settings") { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }
                 Button("End shift Live Activity") { Task { await ShiftActivities.endAll() } }
             } header: { Text("Privacy & data") }
@@ -120,7 +129,7 @@ struct SettingsView: View {
                 Text("Google calendars synchronized to Apple Calendar appear here. Calendar events are read only.").font(.caption)
             }
             Section("Other permissions") {
-                Button("Allow Reminders") { Task { let result = await controller.calendar.reminders(request: true); status = result.message.isEmpty ? "Reminders enabled." : result.message } }
+                Button("Allow Reminders") { Task { do { try await controller.calendar.requestReminders(); await controller.sourceUpdated([.tasks]); status = "Reminders permission updated." } catch { status = error.localizedDescription } } }
                 Button("Allow location for WeatherKit") { controller.location.request() }
                 Text("WeatherKit also needs an Apple Developer capability on your signed app. Location is requested only for weather; background location tracking is disabled.").font(.caption)
             }
