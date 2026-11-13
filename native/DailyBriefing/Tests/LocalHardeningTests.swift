@@ -84,6 +84,17 @@ final class LocalHardeningTests: XCTestCase {
         XCTAssertTrue(ledger.applying(to: partial).pinnedItems.isEmpty)
         XCTAssertEqual(ledger.applying(to: next).pinnedItems, [item.id], "An interrupted source must not erase the saved annotation")
     }
+    func testLegacyReadStateCarriesIntoExplicitTargetForSameDay() {
+        let c = Calendar.autoupdatingCurrent
+        let now = Date()
+        let item = event(start: now)
+        var old = BriefingSnapshot(generatedAt: now, sections: [.init(kind: .schedule, state: .ready, items: [item])])
+        old.readSections = [.schedule]
+        var ledger = AnnotationLedger(); ledger.record(old)
+        var next = old; next.id = UUID()
+        next.target = BriefingScheduler.target(at: now, events: [item], preferences: .init(), calendar: c)
+        XCTAssertEqual(ledger.applying(to: next).readSections, [.schedule])
+    }
     func testDisabledSourcesAreRemovedFromHistorySearchSharingAndSummary() {
         let secret = BriefingItem(id: "private-id", title: "Private calendar value", source: "Test calendar", origin: .calendar, calendarIdentifier: "work")
         let summary = BriefingSection(kind: .summary, state: .ready, items: [.init(title: "Private calendar value", source: "AI")], isGenerated: true, dependencies: [.schedule])
@@ -116,7 +127,9 @@ final class LocalHardeningTests: XCTestCase {
         let legacy = BriefingItem(id: "legacy", title: "Unknown calendar", source: "Work")
         let original = BriefingSnapshot(generatedAt: Date(), sections: [.init(kind: .schedule, state: .ready, items: [approved, other, legacy])])
         let policy = SnapshotAccessPolicy(enabled: [.schedule], calendarIDs: ["work"])
-        XCTAssertEqual(policy.applying(to: original, historical: true).sections[0].items.map(\.id), [approved.id])
+        let filtered = policy.applying(to: original, historical: true)
+        XCTAssertEqual(filtered.sections[0].items.map(\.id), [approved.id])
+        XCTAssertTrue(filtered.sections[0].message.contains("Original history is preserved"))
     }
     func testSharedCacheRechecksGateAndFailsClosedIfCorrupt() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -133,6 +146,12 @@ final class LocalHardeningTests: XCTestCase {
         XCTAssertThrowsError(try store.read())
         try Data(#"{"schemaVersion":999,"policy":{}}"#.utf8).write(to: directory.appendingPathComponent("briefing-access-v2.json"))
         XCTAssertThrowsError(try store.read())
+    }
+    func testManualOnlyScheduleDoesNotPretendCalendarPermissionIsRequired() {
+        let manual = BriefingItem(id: "manual-only", title: "Fixture shift", source: "Manual schedule", isShift: true, origin: .manual)
+        let original = BriefingSnapshot(generatedAt: Date(), sections: [.init(kind: .schedule, state: .ready, items: [manual])])
+        let policy = SnapshotAccessPolicy(enabled: [.schedule], calendarAllowed: false, manualIDs: [manual.id])
+        XCTAssertEqual(policy.applying(to: original).sections[0].state, .ready)
     }
     func testChangedSourceConfigurationInvalidatesLiveCacheButKeepsDatedArchive() {
         let snapshot = BriefingSnapshot(generatedAt: Date(), sections: [.init(kind: .news, state: .ready, items: [.init(title: "Old feed", source: "Test")])])

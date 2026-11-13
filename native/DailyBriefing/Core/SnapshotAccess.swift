@@ -9,12 +9,26 @@ public struct SnapshotAccessPolicy: Codable, Equatable, Sendable {
     public var manualIDs: Set<String>
     public var aiAllowed: Bool
     public var sourceVersions: [String: UUID]
+    public var deniedKinds: Set<SectionKind>
     public init(enabled: Set<SectionKind>, calendarAllowed: Bool = true, remindersAllowed: Bool = true,
                 locationAllowed: Bool = true, calendarIDs: Set<String> = [], manualIDs: Set<String> = [],
-                aiAllowed: Bool = false, sourceVersions: [String: UUID] = [:]) {
+                aiAllowed: Bool = false, sourceVersions: [String: UUID] = [:], deniedKinds: Set<SectionKind> = []) {
         self.enabled = enabled; self.calendarAllowed = calendarAllowed; self.remindersAllowed = remindersAllowed
         self.locationAllowed = locationAllowed; self.calendarIDs = calendarIDs; self.manualIDs = manualIDs
-        self.aiAllowed = aiAllowed; self.sourceVersions = sourceVersions
+        self.aiAllowed = aiAllowed; self.sourceVersions = sourceVersions; self.deniedKinds = deniedKinds
+    }
+    private enum CodingKeys: String, CodingKey { case enabled, calendarAllowed, remindersAllowed, locationAllowed, calendarIDs, manualIDs, aiAllowed, sourceVersions, deniedKinds }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(enabled: try c.decodeIfPresent(Set<SectionKind>.self, forKey: .enabled) ?? [],
+            calendarAllowed: try c.decodeIfPresent(Bool.self, forKey: .calendarAllowed) ?? false,
+            remindersAllowed: try c.decodeIfPresent(Bool.self, forKey: .remindersAllowed) ?? false,
+            locationAllowed: try c.decodeIfPresent(Bool.self, forKey: .locationAllowed) ?? false,
+            calendarIDs: try c.decodeIfPresent(Set<String>.self, forKey: .calendarIDs) ?? [],
+            manualIDs: try c.decodeIfPresent(Set<String>.self, forKey: .manualIDs) ?? [],
+            aiAllowed: try c.decodeIfPresent(Bool.self, forKey: .aiAllowed) ?? false,
+            sourceVersions: try c.decodeIfPresent([String: UUID].self, forKey: .sourceVersions) ?? [:],
+            deniedKinds: try c.decodeIfPresent(Set<SectionKind>.self, forKey: .deniedKinds) ?? [])
     }
     public func applying(to original: BriefingSnapshot, historical: Bool = false) -> BriefingSnapshot {
         var value = original
@@ -27,19 +41,26 @@ public struct SnapshotAccessPolicy: Codable, Equatable, Sendable {
             }
             switch raw.kind {
             case .schedule:
+                let beforeFiltering = section.items
                 section.items = section.items.filter { item in
                     if item.origin == .manual || (item.origin == nil && manualIDs.contains(item.id)) { return manualIDs.contains(item.id) }
                     // Unproven legacy calendar provenance is retained in the private archive, not exported.
                     return calendarAllowed && item.calendarIdentifier.map(calendarIDs.contains) == true
                 }
-                if !calendarAllowed {
-                    section.state = section.items.isEmpty ? .permissionDenied : .partial
+                let expectsCalendar = !calendarIDs.isEmpty || beforeFiltering.contains { $0.origin != .manual && !manualIDs.contains($0.id) }
+                if !calendarAllowed && expectsCalendar {
+                    section.state = section.items.isEmpty ? (deniedKinds.contains(.schedule) ? .permissionDenied : .disconnected) : .partial
                     section.message = "Calendar access is unavailable. Only authorized manual entries are shown."
+                } else if beforeFiltering.count != section.items.count {
+                    section.state = section.items.isEmpty ? .missingData : .partial
+                    section.message = "Some saved calendar entries are hidden because their source cannot currently be verified. Original history is preserved."
                 }
             case .tasks where !remindersAllowed:
-                section.items = []; section.state = .permissionDenied; section.message = "Reminders access is unavailable."
+                section.items = []; section.state = deniedKinds.contains(.tasks) ? .permissionDenied : .disconnected; section.message = "Allow Reminders access to include saved tasks."
             case .weather where !locationAllowed:
-                section.items = []; section.state = .permissionDenied; section.message = "Location access is unavailable."
+                if !section.items.isEmpty || section.state != .disconnected {
+                    section.items = []; section.state = deniedKinds.contains(.weather) ? .permissionDenied : .disconnected; section.message = "Allow location access to include saved forecasts."
+                }
             case .summary where raw.isGenerated && !aiAllowed:
                 section.items = []; section.state = .disconnected; section.message = "AI is disabled. Refresh for a source roll-up."
             default: break

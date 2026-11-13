@@ -6,6 +6,7 @@ import Foundation
     let store = EKEventStore()
     var calendars: [EKCalendar] = []
     var status = EKEventStore.authorizationStatus(for: .event)
+    private var legacyEvents: [String: EKEvent] = [:]
     private var resolvedEvents: [String: EKEvent] = [:]
     var remindersStatus: EKAuthorizationStatus { EKEventStore.authorizationStatus(for: .reminder) }
     func request() async throws {
@@ -14,6 +15,7 @@ import Foundation
     }
     func reload() {
         status = EKEventStore.authorizationStatus(for: .event)
+        legacyEvents = [:]
         calendars = status == .fullAccess ? store.calendars(for: .event).sorted { $0.title < $1.title } : []
     }
     func events(preferences: AppPreferences, from start: Date, to end: Date) -> [BriefingItem] {
@@ -39,6 +41,29 @@ import Foundation
         return ManualSchedule.resolve(calendarItems: items, shifts: preferences.manualShifts, from: start, to: end, calendar: .autoupdatingCurrent)
     }
     func event(id: String) -> EKEvent? { resolvedEvents[id] }
+    func reconcileLegacy(_ snapshot: BriefingSnapshot, preferences: AppPreferences) -> BriefingSnapshot {
+        guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else { return snapshot }
+        let selected = preferences.calendarIDs.union(preferences.workCalendarID.isEmpty ? [] : [preferences.workCalendarID])
+        var value = snapshot
+        for s in value.sections.indices where value.sections[s].kind == .schedule {
+            for i in value.sections[s].items.indices {
+                var item = value.sections[s].items[i]
+                guard item.origin == nil, let separator = item.id.lastIndex(of: "@") else { continue }
+                let eventID = String(item.id[..<separator])
+                guard let event = legacyEvents[eventID] ?? store.event(withIdentifier: eventID), selected.contains(event.calendar.calendarIdentifier) else { continue }
+                legacyEvents[eventID] = event
+                let oldID = item.id
+                item.origin = .calendar; item.calendarIdentifier = event.calendar.calendarIdentifier; item.eventIdentifier = event.eventIdentifier
+                // A non-recurring record can be rekeyed without guessing an occurrence date.
+                if !event.hasRecurrenceRules && !event.isDetached {
+                    item.id = CalendarIdentity.id(calendar: event.calendar.calendarIdentifier, item: event.calendarItemIdentifier, occurrence: nil)
+                    if value.pinnedItems.remove(oldID) != nil { value.pinnedItems.insert(item.id) }
+                }
+                value.sections[s].items[i] = item
+            }
+        }
+        return value
+    }
     func requestReminders() async throws { _ = try await store.requestFullAccessToReminders() }
     func reminders() async -> BriefingSection {
         do {

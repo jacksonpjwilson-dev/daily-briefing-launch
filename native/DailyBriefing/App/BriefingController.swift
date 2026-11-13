@@ -33,14 +33,15 @@ import WidgetKit
 
     init(settings: SettingsStore, container: ModelContainer) {
         self.settings = settings; history = HistoryStore(context: container.mainContext)
+        var originals: [BriefingSnapshot] = []
         do {
-            let saved = try history.load()
-            settings.seedAnnotations(saved)
+            let saved = try history.load(); originals = saved
             snapshot = saved.last
             if !history.recoveryMessages.isEmpty { errorMessage = history.recoveryMessages.joined(separator: "\n") }
         } catch { errorMessage = "History could not be loaded; original data was preserved. \(error.localizedDescription)" }
         calendar.reload()
         upcomingEvents = queryEvents()
+        settings.seedAnnotations(originals.map { calendar.reconcileLegacy($0, preferences: settings.value) })
         lastPolicy = accessPolicy
         if let snapshot { self.snapshot = visible(snapshot) }
         publishCurrent()
@@ -51,20 +52,27 @@ import WidgetKit
         let p = settings.value
         var ids = p.calendarIDs
         if !p.workCalendarID.isEmpty { ids.insert(p.workCalendarID) }
+        var denied: Set<SectionKind> = []
+        if [.denied, .restricted].contains(calendar.status) { denied.insert(.schedule) }
+        if [.denied, .restricted].contains(calendar.remindersStatus) { denied.insert(.tasks) }
+        if [.denied, .restricted].contains(location.status) { denied.insert(.weather) }
         return SnapshotAccessPolicy(enabled: settings.recoveryRequired ? [] : Set(p.sectionOrder).subtracting(p.hiddenSections),
             calendarAllowed: calendar.status == .fullAccess, remindersAllowed: calendar.remindersStatus == .fullAccess,
             locationAllowed: [.authorizedAlways, .authorizedWhenInUse].contains(location.status),
             calendarIDs: ids, manualIDs: Set(p.manualShifts.filter { $0.end > $0.start }.map { $0.id.uuidString }),
-            aiAllowed: p.aiConsent, sourceVersions: settings.sourceVersions)
+            aiAllowed: p.aiConsent, sourceVersions: settings.sourceVersions, deniedKinds: denied)
     }
     func visible(_ snapshot: BriefingSnapshot, historical: Bool = false) -> BriefingSnapshot {
-        accessPolicy.applying(to: settings.annotations.applying(to: snapshot), historical: historical)
+        let policy = accessPolicy
+        let original = historical && policy.enabled.contains(.schedule) && policy.calendarAllowed
+            ? calendar.reconcileLegacy(snapshot, preferences: settings.value) : snapshot
+        return policy.applying(to: settings.annotations.applying(to: original), historical: historical)
     }
     var needsRefresh: Bool {
         guard !settings.recoveryRequired, !accessPolicy.enabled.isEmpty else { return false }
         guard let snapshot else { return true }
         let target = BriefingScheduler.target(at: now, events: upcomingEvents, preferences: settings.value.scheduling, calendar: .autoupdatingCurrent)
-        return accessPolicy.enabled.contains(where: { snapshot.sourceVersions[$0.rawValue] != settings.sourceVersions[$0.rawValue] }) || snapshot.target != target || [.refreshing, .interrupted].contains(snapshot.status) ||
+        return !accessPolicy.enabled.isSubset(of: Set(snapshot.sections.map(\.kind))) || accessPolicy.enabled.contains(where: { snapshot.sourceVersions[$0.rawValue] != settings.sourceVersions[$0.rawValue] }) || snapshot.target != target || [.refreshing, .interrupted].contains(snapshot.status) ||
             now.timeIntervalSince(snapshot.updatedAt ?? snapshot.generatedAt) > 900
     }
     private func queryEvents() -> [BriefingItem] {
@@ -103,8 +111,9 @@ import WidgetKit
     private func settingsChanged(old: AppPreferences, new: AppPreferences) {
         let changed = AppPreferences.changedSources(from: old, to: new)
         replacementKinds.formUnion(activeKinds.union(changed))
+        if old == new && lastPolicy?.enabled != accessPolicy.enabled { replacementKinds.formUnion(accessPolicy.enabled) }
         if !settings.annotationsSeeded {
-            do { settings.seedAnnotations(try history.load(recoverInterrupted: false)) }
+            do { settings.seedAnnotations(try history.load(recoverInterrupted: false).map { calendar.reconcileLegacy($0, preferences: settings.value) }) }
             catch { errorMessage = error.localizedDescription }
         }
         if !changed.isEmpty || settings.recoveryRequired { active?.cancel(); speech.stop() }

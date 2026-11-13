@@ -53,8 +53,9 @@ public enum ManualSchedule {
 }
 public enum CalendarIdentity {
     public static func id(calendar: String, item: String, occurrence: Date?) -> String {
-        let data = try! JSONEncoder().encode([calendar, item, occurrence.map { String($0.timeIntervalSince1970) } ?? "single"])
-        return "calendar:" + data.base64EncodedString()
+        let parts = [calendar, item, occurrence.map { String($0.timeIntervalSince1970) } ?? "single"]
+        let key = parts.map { "\($0.utf8.count):\($0)" }.joined()
+        return "calendar:" + Data(key.utf8).base64EncodedString()
     }
 }
 public extension BriefingItem {
@@ -89,7 +90,10 @@ public struct AnnotationLedger: Codable, Equatable, Sendable {
     public var readRevisions: [String: String] = [:]
     public init() {}
     private func key(_ snapshot: BriefingSnapshot, _ kind: SectionKind) -> String {
-        let day = snapshot.target?.dayKey ?? String(Calendar.current.startOfDay(for: snapshot.generatedAt).timeIntervalSince1970)
+        let c = Calendar.autoupdatingCurrent
+        let start = c.startOfDay(for: snapshot.generatedAt)
+        let legacyTarget = BriefingTarget(dayStart: start, dayEnd: c.date(byAdding: .day, value: 1, to: start)!, timeZoneID: c.timeZone.identifier)
+        let day = snapshot.target?.dayKey ?? legacyTarget.dayKey
         return day + "|" + kind.rawValue
     }
     public mutating func record(_ snapshot: BriefingSnapshot) {
