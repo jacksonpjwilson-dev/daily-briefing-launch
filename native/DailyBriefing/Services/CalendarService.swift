@@ -32,7 +32,7 @@ import Foundation
                     resolvedEvents[id] = event
                     return BriefingItem(id: id,
                         title: event.title ?? "Calendar event", detail: [event.location, event.isAllDay ? "All day" : nil].compactMap { $0 }.joined(separator: " · "),
-                        date: event.startDate, end: event.endDate, source: event.calendar.title,
+                        date: event.startDate, end: event.endDate, url: event.url, source: event.calendar.title,
                         isShift: preferences.scheduleSource == "calendar" && !event.isAllDay && event.calendar.calendarIdentifier == preferences.workCalendarID,
                         isAllDay: event.isAllDay, origin: .calendar, calendarIdentifier: event.calendar.calendarIdentifier, eventIdentifier: event.eventIdentifier)
                 }

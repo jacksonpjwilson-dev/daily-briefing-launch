@@ -43,6 +43,7 @@ import WidgetKit
         upcomingEvents = queryEvents()
         settings.seedAnnotations(originals.map { calendar.reconcileLegacy($0, preferences: settings.value) })
         lastPolicy = accessPolicy
+        location.setEnabled(accessPolicy.enabled.contains(.weather))
         if let snapshot { self.snapshot = visible(snapshot) }
         publishCurrent()
         settings.onChange = { [weak self] old, new in self?.settingsChanged(old: old, new: new) }
@@ -95,6 +96,7 @@ import WidgetKit
             publishCurrent()
         }
         lastPolicy = accessPolicy
+        location.setEnabled(accessPolicy.enabled.contains(.weather))
         if settings.recoveryRequired { errorMessage = settings.recoveryNotice }
     }
     func sourceUpdated(_ kinds: Set<SectionKind>) async {
@@ -120,6 +122,7 @@ import WidgetKit
         if changed.contains(.schedule) { Task { await ShiftActivities.endAll() } }
         if let snapshot { self.snapshot = visible(snapshot) }
         lastPolicy = accessPolicy
+        location.setEnabled(accessPolicy.enabled.contains(.weather))
         // Commit the new privacy gate before any asynchronous work or network request.
         publishCurrent()
         replacementTask?.cancel()
@@ -273,7 +276,7 @@ import WidgetKit
         let items = upcomingEvents.filter(target.contains)
         let available = Set(calendar.calendars.map(\.calendarIdentifier))
         let connected = calendar.status == .fullAccess && (!p.calendarIDs.intersection(available).isEmpty || available.contains(p.workCalendarID))
-        let denied = [.denied, .restricted].contains(calendar.status)
+        let denied = (!p.calendarIDs.isEmpty || !p.workCalendarID.isEmpty) && [.denied, .restricted].contains(calendar.status)
         return BriefingSection(kind: .schedule, state: connected || !items.isEmpty ? .ready : denied ? .permissionDenied : .disconnected,
             message: denied ? "Calendar access unavailable. Manual entries remain available." : !connected && items.isEmpty ? "Select available calendars or add a manual shift in Settings." : items.isEmpty ? "No commitments on this briefing date." : "",
             fetchedAt: Date(), expiresAt: Date().addingTimeInterval(900), items: items)

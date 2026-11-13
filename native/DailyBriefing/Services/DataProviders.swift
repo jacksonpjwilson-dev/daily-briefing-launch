@@ -40,6 +40,12 @@ enum HTTP {
 @MainActor @Observable final class LocationService: NSObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     var location: CLLocation?
+    private var enabled = false
+    func setEnabled(_ value: Bool) {
+        guard enabled != value else { return }; enabled = value
+        if value { requestIfAuthorized() }
+        else { manager.stopUpdatingLocation(); location = nil }
+    }
     var status: CLAuthorizationStatus = .notDetermined
     override init() { super.init(); manager.delegate = self; status = manager.authorizationStatus }
     func reloadAuthorization() {
@@ -47,11 +53,11 @@ enum HTTP {
         if ![.authorizedAlways, .authorizedWhenInUse].contains(status) { location = nil }
     }
     func requestIfAuthorized() {
-        if [.authorizedAlways, .authorizedWhenInUse].contains(manager.authorizationStatus) { manager.requestLocation() }
+        if enabled && [.authorizedAlways, .authorizedWhenInUse].contains(manager.authorizationStatus) { manager.requestLocation() }
     }
     func request() {
         if manager.authorizationStatus == .notDetermined { manager.requestWhenInUseAuthorization() }
-        else if [.authorizedAlways, .authorizedWhenInUse].contains(manager.authorizationStatus) { manager.requestLocation() }
+        else if enabled && [.authorizedAlways, .authorizedWhenInUse].contains(manager.authorizationStatus) { manager.requestLocation() }
     }
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let authorization = manager.authorizationStatus
@@ -59,7 +65,7 @@ enum HTTP {
     }
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         let latest = locations.last
-        Task { @MainActor in self.location = latest }
+        Task { @MainActor in if self.enabled { self.location = latest } }
     }
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         Task { @MainActor in self.location = nil }
