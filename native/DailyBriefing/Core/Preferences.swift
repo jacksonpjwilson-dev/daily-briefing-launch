@@ -57,8 +57,14 @@ public enum PreferencesCodec {
     public static func encode(_ value: PreferencesDocument) throws -> Data { try JSONEncoder().encode(value) }
     public static func decode(_ data: Data) throws -> PreferencesDocument {
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw StoredDataError.invalidDocument("Expected settings.") }
+        guard json["schemaVersion"] == nil || json["schemaVersion"] is Int else {
+            throw StoredDataError.invalidDocument("The settings version is invalid.")
+        }
         let version = json["schemaVersion"] as? Int ?? 1
         guard (1...2).contains(version) else { throw StoredDataError.unsupportedVersion(version) }
+        if version == 2 && !(json["preferences"] is [String: Any]) {
+            throw StoredDataError.invalidDocument("The versioned settings payload is missing or invalid.")
+        }
         let payload = (json["preferences"] as? [String: Any]) ?? json
         let defaults = try JSONSerialization.jsonObject(with: JSONEncoder().encode(AppPreferences())) as! [String: Any]
         func merge(_ original: [String: Any], _ incoming: [String: Any]) -> [String: Any] {
@@ -108,8 +114,9 @@ public final class PreferencesPersistence {
                 document = try PreferencesCodec.decode(data)
                 if defaults.data(forKey: Self.currentKey) == nil {
                     defaults.set(data, forKey: Self.backupKey)
-                    try persist()
                 }
+                // Persist filled defaults/revision IDs once, including partial V2 documents.
+                try persist()
             } catch {
                 recoveryRequired = true; notice = error.localizedDescription
                 defaults.set(data, forKey: Self.recoveryKey)

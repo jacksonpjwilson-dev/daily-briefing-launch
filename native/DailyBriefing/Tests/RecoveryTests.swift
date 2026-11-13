@@ -19,7 +19,8 @@ final class RecoveryTests: XCTestCase {
         XCTAssertEqual(PreferencesPersistence(defaults: defaults).document.sourceVersions, store.document.sourceVersions)
     }
     func testFutureOrCorruptPreferencesArePreservedAndAutosaveBlocked() throws {
-        for data in [Data("not-json".utf8), Data(#"{"schemaVersion":999,"preferences":{"name":"Future data"}}"#.utf8)] {
+        for data in [Data("not-json".utf8), Data(#"{"schemaVersion":"future","preferences":{}}"#.utf8),
+                     Data(#"{"schemaVersion":2,"preferences":"damaged"}"#.utf8), Data(#"{"schemaVersion":999,"preferences":{"name":"Future data"}}"#.utf8)] {
             let defaults = defaults(); defaults.set(data, forKey: PreferencesPersistence.currentKey)
             let store = PreferencesPersistence(defaults: defaults)
             XCTAssertTrue(store.recoveryRequired); XCTAssertNotNil(store.notice)
@@ -31,6 +32,15 @@ final class RecoveryTests: XCTestCase {
             XCTAssertEqual(defaults.data(forKey: PreferencesPersistence.recoveryKey), data)
             XCTAssertEqual(try PreferencesCodec.decode(defaults.data(forKey: PreferencesPersistence.currentKey)!).preferences.name, "Attempted edit")
         }
+    }
+    func testPartialVersionedSettingsPersistNewRevisionIDsAcrossLaunches() {
+        let defaults = defaults()
+        defaults.set(Data(#"{"schemaVersion":2,"preferences":{"name":"Existing"}}"#.utf8), forKey: PreferencesPersistence.currentKey)
+        let first = PreferencesPersistence(defaults: defaults)
+        XCTAssertFalse(first.recoveryRequired)
+        let second = PreferencesPersistence(defaults: defaults)
+        XCTAssertEqual(first.document.sourceVersions, second.document.sourceVersions)
+        XCTAssertEqual(second.document.preferences.name, "Existing")
     }
     func testLastGoodRecoveryAndAnnotationsSurviveSettingsSave() throws {
         let defaults = defaults(); let store = PreferencesPersistence(defaults: defaults)
