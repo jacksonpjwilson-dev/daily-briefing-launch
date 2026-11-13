@@ -10,6 +10,18 @@ final class RefreshCoordinatorTests: XCTestCase {
         let result = await RefreshCoordinator.run(jobs: jobs, enabled: [.news], budget: 1) { saved.append($0.kind) }
         XCTAssertEqual(result, .complete); XCTAssertEqual(requested, [.news]); XCTAssertEqual(saved, [.news])
     }
+    @MainActor func testTargetDayRolloverRefreshesDateSensitiveSourcesDuringSectionRefresh() async {
+        var requested: Set<SectionKind> = []
+        let jobs = SectionKind.allCases.map { kind in RefreshJob(kind: kind) {
+            requested.insert(kind); return BriefingSection(kind: kind, state: .ready)
+        } }
+        let enabled: Set<SectionKind> = [.schedule, .weather, .news, .summary]
+        let scope = RefreshCoordinator.requiredKinds(requested: [.news], enabled: enabled, targetChanged: true)
+        _ = await RefreshCoordinator.run(jobs: jobs, enabled: scope, budget: 1) { _ in }
+        XCTAssertEqual(requested, enabled)
+        XCTAssertEqual(RefreshCoordinator.requiredKinds(requested: [.news], enabled: [.news], targetChanged: true), [.news], "A target rollover must still respect disabled providers")
+        XCTAssertEqual(RefreshCoordinator.requiredKinds(requested: [.news], enabled: enabled, targetChanged: false), [.news])
+    }
     @MainActor func testDeadlineDoesNotWaitForNonCooperativeProviderOrCommitLateResult() async throws {
         var saved: [BriefingSection] = []
         let began = ContinuousClock.now

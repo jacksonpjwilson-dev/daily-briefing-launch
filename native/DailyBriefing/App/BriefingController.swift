@@ -181,9 +181,9 @@ import WidgetKit
         var candidate = BriefingSnapshot(generatedAt: now, sections: previous?.sections ?? [], nextDelivery: nil)
         candidate.target = target; candidate.sourceVersions = previous?.sourceVersions ?? [:]
         candidate.status = .refreshing; candidate.updatedAt = now
-        if previous?.target != target { candidate.sections.removeAll { $0.kind == .schedule || $0.kind == .summary } }
+        if previous?.target != target { candidate.sections.removeAll { $0.kind == .schedule || $0.kind == .weather || $0.kind == .summary } }
         candidate = policy.applying(to: candidate)
-        let enabled = kinds.intersection(policy.enabled)
+        let enabled = RefreshCoordinator.requiredKinds(requested: kinds, enabled: policy.enabled, targetChanged: previous?.target != target)
         if !enabled.isEmpty, !enabled.isSubset(of: [.summary]) {
             if let i = candidate.sections.firstIndex(where: { $0.kind == .summary }) {
                 candidate.sections[i].state = .stale; candidate.sections[i].items = []

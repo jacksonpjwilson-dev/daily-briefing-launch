@@ -69,6 +69,11 @@ public enum RefreshCompletion: Equatable, Sendable { case complete, interrupted,
 /// Testable orchestration used by the application. Provider work cannot write to storage directly.
 /// Even a non-cooperative provider cannot delay the caller past its deadline or commit a late result.
 @MainActor public enum RefreshCoordinator {
+    public static func requiredKinds(requested: Set<SectionKind>, enabled: Set<SectionKind>, targetChanged: Bool) -> Set<SectionKind> {
+        // A section-only refresh must not stamp yesterday's schedule/forecast with a new target date.
+        let requested = targetChanged ? requested.union([.schedule, .weather, .summary]) : requested
+        return requested.intersection(enabled)
+    }
     public static func run(jobs: [RefreshJob], enabled: Set<SectionKind>, budget: Double,
                            reschedule: @escaping @MainActor () async -> Void = {},
                            checkpoint: @escaping @MainActor (BriefingSection) throws -> Void) async -> RefreshCompletion {
