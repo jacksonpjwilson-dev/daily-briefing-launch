@@ -71,13 +71,42 @@ import Foundation
                 return BriefingSection(kind: .tasks, state: [.denied, .restricted].contains(remindersStatus) ? .permissionDenied : .disconnected, message: "Allow Reminders in Connections to include your tasks.")
             }
             let predicate = store.predicateForIncompleteReminders(withDueDateStarting: nil, ending: nil, calendars: nil)
-            let reminders: [EKReminder] = await withCheckedContinuation { continuation in
-                store.fetchReminders(matching: predicate) { continuation.resume(returning: $0 ?? []) }
-            }
+            let fetch = ReminderFetch(store: store)
+            let reminders = try await withTaskCancellationHandler(operation: {
+                try Task.checkCancellation()
+                return try await withCheckedThrowingContinuation { fetch.start(predicate: predicate, continuation: $0) }
+            }, onCancel: { Task { @MainActor in fetch.cancel() } })
             let items = reminders.sorted { ($0.dueDateComponents?.date ?? .distantFuture) < ($1.dueDateComponents?.date ?? .distantFuture) }.prefix(50).map {
                 BriefingItem(id: $0.calendarItemIdentifier, title: $0.title ?? "Reminder", detail: $0.priority > 0 ? "Priority \($0.priority)" : "", date: $0.dueDateComponents?.date, source: "Apple Reminders", origin: .reminder)
             }
             return BriefingSection(kind: .tasks, state: .ready, message: items.isEmpty ? "No outstanding reminders." : "", fetchedAt: Date(), expiresAt: Date().addingTimeInterval(900), items: items)
         } catch { return BriefingSection(kind: .tasks, state: .failed, message: error.localizedDescription) }
+    }
+}
+
+@MainActor private final class ReminderFetch {
+    private let store: EKEventStore
+    private var continuation: CheckedContinuation<[EKReminder], Error>?
+    private var token: Any?
+    private var finished = false
+    init(store: EKEventStore) { self.store = store }
+    func start(predicate: NSPredicate, continuation: CheckedContinuation<[EKReminder], Error>) {
+        guard !finished else { continuation.resume(throwing: CancellationError()); return }
+        self.continuation = continuation
+        token = store.fetchReminders(matching: predicate) { [weak self] reminders in
+            Task { @MainActor in self?.finish(reminders ?? []) }
+        }
+    }
+    private func finish(_ reminders: [EKReminder]) {
+        guard !finished else { return }; finished = true
+        let continuation = continuation; self.continuation = nil; token = nil
+        continuation?.resume(returning: reminders)
+    }
+    func cancel() {
+        guard !finished else { return }; finished = true
+        if let token { store.cancelFetchRequest(token) }
+        token = nil
+        let continuation = continuation; self.continuation = nil
+        continuation?.resume(throwing: CancellationError())
     }
 }

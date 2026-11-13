@@ -50,6 +50,7 @@ final class LocalHardeningTests: XCTestCase {
     func testStableCalendarIdentityAndRecurringOccurrences() {
         let a = CalendarIdentity.id(calendar: "work", item: "persistent-id", occurrence: nil)
         XCTAssertEqual(a, CalendarIdentity.id(calendar: "work", item: "persistent-id", occurrence: nil))
+        XCTAssertEqual(a, "calendar:" + (try! JSONEncoder().encode(["work", "persistent-id", "single"])).base64EncodedString())
         XCTAssertNotEqual(a, CalendarIdentity.id(calendar: "other-calendar", item: "persistent-id", occurrence: nil))
         XCTAssertNotEqual(CalendarIdentity.id(calendar: "work", item: "series", occurrence: date("2026-11-12T13:00:00Z")), CalendarIdentity.id(calendar: "work", item: "series", occurrence: date("2026-11-13T13:00:00Z")))
     }

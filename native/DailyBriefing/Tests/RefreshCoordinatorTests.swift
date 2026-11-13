@@ -44,6 +44,18 @@ final class RefreshCoordinatorTests: XCTestCase {
         let resumed = await RefreshCoordinator.run(jobs: [.init(kind: .news) { .init(kind: .news, state: .ready) }], enabled: [.news], budget: 1) { persisted.append($0) }
         XCTAssertEqual(resumed, .complete); XCTAssertEqual(Set(persisted.map(\.kind)), [.schedule, .news])
     }
+    @MainActor func testLockedCredentialsAreAnAccessProblemAndDoNotRunNetworkStage() async {
+        var networkRequests = 0
+        var results: [BriefingSection] = []
+        let outcome = await RefreshCoordinator.run(jobs: [.init(kind: .summary) {
+            let readToken: () throws -> String = { throw ProviderAccessError(state: .permissionDenied, message: "Fixture credential is locked") }
+            _ = try readToken()
+            networkRequests += 1
+            return .init(kind: .summary, state: .ready)
+        }], enabled: [.summary], budget: 1) { results.append($0) }
+        XCTAssertEqual(outcome, .complete); XCTAssertEqual(networkRequests, 0)
+        XCTAssertEqual(results.first?.state, .permissionDenied)
+    }
     @MainActor func testProviderFailureIsIsolatedAndCheckpointFailureStopsFurtherCommits() async {
         var saved: [BriefingSection] = []
         let result = await RefreshCoordinator.run(jobs: [

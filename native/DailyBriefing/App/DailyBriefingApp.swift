@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import EventKit
 import BackgroundTasks
+@preconcurrency import UserNotifications
 
 @main @MainActor struct DailyBriefingApp: App {
     @State private var settings: SettingsStore
@@ -9,6 +10,7 @@ import BackgroundTasks
     private let container: ModelContainer?
     private let startupError: String?
     init() {
+        UNUserNotificationCenter.current().delegate = LocalNotificationRouter.shared
         let settings = SettingsStore(); _settings = State(initialValue: settings)
         do {
             let container = try Persistence.container(cloud: settings.value.cloudSync)
@@ -96,5 +98,14 @@ struct RootView: View {
             if url.host == "refresh" { Task { await controller.refresh() } }
             else { controller.route = SectionKind(rawValue: url.host ?? "") }
         }
+    }
+}
+
+@MainActor private final class LocalNotificationRouter: NSObject, UNUserNotificationCenterDelegate {
+    static let shared = LocalNotificationRouter()
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier,
+              response.notification.request.identifier.hasPrefix("briefing.") else { return }
+        await MainActor.run { IntentRouter.request("today") }
     }
 }

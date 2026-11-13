@@ -53,9 +53,9 @@ public enum ManualSchedule {
 }
 public enum CalendarIdentity {
     public static func id(calendar: String, item: String, occurrence: Date?) -> String {
-        let parts = [calendar, item, occurrence.map { String($0.timeIntervalSince1970) } ?? "single"]
-        let key = parts.map { "\($0.utf8.count):\($0)" }.joined()
-        return "calendar:" + Data(key.utf8).base64EncodedString()
+        // Default JSON encoding of a string array cannot fail. Keep this serialization stable across upgrades.
+        let data = try! JSONEncoder().encode([calendar, item, occurrence.map { String($0.timeIntervalSince1970) } ?? "single"])
+        return "calendar:" + data.base64EncodedString()
     }
 }
 public extension BriefingItem {

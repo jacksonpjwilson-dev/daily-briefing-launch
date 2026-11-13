@@ -1,5 +1,11 @@
 import Foundation
 
+public struct ProviderAccessError: LocalizedError, Sendable {
+    public let state: ProviderState
+    public let message: String
+    public init(state: ProviderState, message: String) { self.state = state; self.message = message }
+    public var errorDescription: String? { message }
+}
 public struct ProviderDeadlineExceeded: LocalizedError, Sendable {
     public var errorDescription: String? { "This source exceeded its refresh deadline. Saved information may be outdated." }
 }
@@ -72,6 +78,7 @@ public enum RefreshCompletion: Equatable, Sendable { case complete, interrupted,
                 group.addTask {
                     do { return try await ProviderDeadline.run(seconds: min(job.timeout, budget), operation: job.operation) }
                     catch is CancellationError { return nil }
+                    catch let error as ProviderAccessError { return BriefingSection(kind: job.kind, state: error.state, message: error.message) }
                     catch is ProviderDeadlineExceeded {
                         return BriefingSection(kind: job.kind, state: .timedOut, message: ProviderDeadlineExceeded().localizedDescription)
                     } catch {

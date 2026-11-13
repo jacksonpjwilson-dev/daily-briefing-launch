@@ -117,7 +117,7 @@ protocol HealthReporter { func send(_ report: HealthReport) async throws }
 struct HTTPSHealthReporter: HealthReporter {
     let endpoint: URL
     func send(_ report: HealthReport) async throws {
-        guard endpoint.scheme == "https", let token = KeychainStore.read(service: "monitoring", endpoint: endpoint), !token.isEmpty else { throw ProviderError.invalidEndpoint }
+        guard endpoint.scheme == "https", let token = try KeychainStore.read(service: "monitoring", endpoint: endpoint), !token.isEmpty else { throw ProviderError.invalidEndpoint }
         var request = URLRequest(url: endpoint); request.httpMethod = "POST"; request.timeoutInterval = 20
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

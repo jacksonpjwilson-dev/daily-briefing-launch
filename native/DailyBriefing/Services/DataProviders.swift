@@ -164,7 +164,7 @@ struct HTTPSummaryProvider: AISummaryProvider {
         guard endpoint.scheme == "https" else { throw ProviderError.invalidEndpoint }
         var request = URLRequest(url: endpoint); request.httpMethod = "POST"; request.timeoutInterval = 30
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let token = KeychainStore.read(service: "ai", endpoint: endpoint) { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        if let token = try KeychainStore.read(service: "ai", endpoint: endpoint) { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         request.httpBody = try JSONEncoder().encode(Request(sections: sections.filter { $0.kind != .summary && $0.isFresh(at: Date()) && !$0.isGenerated }.map { section in var section = section; section.items.removeAll { $0.sourceExpiresAt.map { $0 <= Date() } == true }; return section }, length: length))
         let (data, response) = try await URLSession.shared.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw ProviderError.response((response as? HTTPURLResponse)?.statusCode ?? 0) }
