@@ -1,0 +1,9 @@
+# Native Apple build products and per-user state
+.DS_Store
+native/.build/
+native/.swiftpm/
+native/DerivedData/
+**/xcuserdata/
+*.xcuserstate
+__pycache__/
+native/artifacts/

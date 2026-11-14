@@ -1,0 +1,203 @@
+import Foundation
+
+public enum SectionKind: String, Codable, CaseIterable, Identifiable, Sendable {
+    case schedule, weather, tasks, email, news, sports, aviation, summary
+    public var id: String { rawValue }
+    public var title: String { rawValue == "summary" ? "Daily perspective" : rawValue.capitalized }
+    public var symbol: String {
+        switch self {
+        case .schedule: "calendar"
+        case .weather: "cloud.sun.fill"
+        case .tasks: "checklist"
+        case .email: "envelope.badge"
+        case .news: "newspaper"
+        case .sports: "basketball.fill"
+        case .aviation: "airplane"
+        case .summary: "sparkles"
+        }
+    }
+}
+public enum ProviderState: String, Codable, Sendable {
+    case ready, partial, disconnected, permissionDenied, offline, failed, timedOut, stale, missingData
+}
+public enum ItemOrigin: String, Codable, Sendable { case calendar, manual, reminder, provider }
+public struct BriefingItem: Codable, Identifiable, Hashable, Sendable {
+    public var id: String
+    public var title: String
+    public var detail: String
+    public var date: Date?
+    public var end: Date?
+    public var url: URL?
+    public var source: String
+    public var attributionImageURL: URL?
+    public var isShift: Bool
+    public var isAllDay: Bool = false
+    public var origin: ItemOrigin?
+    public var calendarIdentifier: String?
+    public var eventIdentifier: String?
+    public var sourceExpiresAt: Date?
+    public init(id: String = UUID().uuidString, title: String, detail: String = "", date: Date? = nil,
+                end: Date? = nil, url: URL? = nil, source: String, isShift: Bool = false, attributionImageURL: URL? = nil, isAllDay: Bool = false, origin: ItemOrigin? = nil,
+                calendarIdentifier: String? = nil, eventIdentifier: String? = nil, sourceExpiresAt: Date? = nil) {
+        self.id = id; self.title = title; self.detail = detail; self.date = date
+        self.end = end; self.url = url; self.source = source; self.isShift = isShift; self.attributionImageURL = attributionImageURL
+        self.isAllDay = isAllDay; self.origin = origin; self.calendarIdentifier = calendarIdentifier; self.eventIdentifier = eventIdentifier; self.sourceExpiresAt = sourceExpiresAt
+    }
+    private enum CodingKeys: String, CodingKey {
+        case id, title, detail, date, end, url, source, attributionImageURL, isShift, isAllDay, origin, calendarIdentifier, eventIdentifier, sourceExpiresAt
+    }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id); title = try c.decode(String.self, forKey: .title)
+        source = try c.decode(String.self, forKey: .source); detail = try c.decodeIfPresent(String.self, forKey: .detail) ?? ""
+        date = try c.decodeIfPresent(Date.self, forKey: .date); end = try c.decodeIfPresent(Date.self, forKey: .end)
+        url = try c.decodeIfPresent(URL.self, forKey: .url); attributionImageURL = try c.decodeIfPresent(URL.self, forKey: .attributionImageURL)
+        isShift = try c.decodeIfPresent(Bool.self, forKey: .isShift) ?? false
+        isAllDay = try c.decodeIfPresent(Bool.self, forKey: .isAllDay) ?? false
+        origin = try c.decodeIfPresent(ItemOrigin.self, forKey: .origin)
+        calendarIdentifier = try c.decodeIfPresent(String.self, forKey: .calendarIdentifier)
+        eventIdentifier = try c.decodeIfPresent(String.self, forKey: .eventIdentifier)
+        sourceExpiresAt = try c.decodeIfPresent(Date.self, forKey: .sourceExpiresAt)
+    }
+}
+public struct BriefingSection: Codable, Identifiable, Sendable {
+    public var kind: SectionKind
+    public var state: ProviderState
+    public var message: String
+    public var fetchedAt: Date?
+    public var expiresAt: Date?
+    public var items: [BriefingItem]
+    public var isGenerated: Bool
+    public var dependencies: Set<SectionKind>?
+    public var id: SectionKind { kind }
+    public init(kind: SectionKind, state: ProviderState, message: String = "", fetchedAt: Date? = nil,
+                expiresAt: Date? = nil, items: [BriefingItem] = [], isGenerated: Bool = false, dependencies: Set<SectionKind>? = nil) {
+        self.kind = kind; self.state = state; self.message = message; self.fetchedAt = fetchedAt
+        self.expiresAt = expiresAt; self.items = items; self.isGenerated = isGenerated; self.dependencies = dependencies
+    }
+    public func isFresh(at now: Date) -> Bool {
+        [.ready, .partial].contains(state) && fetchedAt.map { $0 <= now.addingTimeInterval(60) } == true && expiresAt.map { $0 > now } == true
+    }
+    public func assessed(at now: Date) -> BriefingSection {
+        var copy = self
+        if [.ready, .partial].contains(state) && !isFresh(at: now) { copy.state = .stale; copy.message = ([message, "Cached information — refresh before relying on it."].filter { !$0.isEmpty }).joined(separator: " ") }
+        return copy
+    }
+}
+public enum SnapshotStatus: String, Codable, Sendable { case refreshing, complete, partial, interrupted }
+public struct BriefingSnapshot: Codable, Identifiable, Sendable {
+    public var id: UUID = UUID()
+    public var generatedAt: Date
+    public var sections: [BriefingSection]
+    public var nextDelivery: Date?
+    public var target: BriefingTarget? = nil
+    public var updatedAt: Date? = nil
+    public var status: SnapshotStatus = .complete
+    public var sourceVersions: [String: UUID] = [:]
+    public var changes: [String] = []
+    public var readSections: Set<SectionKind> = []
+    public var pinnedItems: Set<String> = []
+    public var summaryText: String {
+        let content = sections.map { section in
+            let assessed = section.assessed(at: Date())
+            let timestamp = section.fetchedAt.map { " · source refreshed " + $0.formatted(date: .abbreviated, time: .shortened) } ?? ""
+            let items = section.items.map { item in
+                let date = item.date.map { " (" + $0.formatted(date: .abbreviated, time: .shortened) + ")" } ?? ""
+                return "\(item.title)\(date). \(item.detail) [\(item.source)]"
+            }.joined(separator: " ")
+            return "\(section.kind.title) [\(assessed.state.rawValue)]\(timestamp): \(assessed.message) \(items)"
+        }.joined(separator: "\n\n")
+        return "Daily Briefing · saved \(generatedAt.formatted(date: .abbreviated, time: .shortened))\n\n" + content
+    }
+}
+public struct ManualShift: Codable, Identifiable, Equatable, Sendable {
+    public var id: UUID = UUID()
+    public var title: String = "Work shift"
+    public var start: Date = Date()
+    public var end: Date = Date().addingTimeInterval(8 * 3600)
+}
+public struct SchedulingPreferences: Codable, Equatable, Sendable {
+    public var leadMinutes: Int = 45
+    public var weekdayMinute: Int = 240
+    public var weekendMinute: Int = 240
+    public var deliverOnDaysOff: Bool = true
+    public init() {}
+}
+public enum BriefingScheduler {
+    /// Shifts belong to their start date. Subtract elapsed minutes, including across midnight/DST.
+    public static func delivery(on day: Date, shifts: [Date], preferences: SchedulingPreferences,
+                                calendar: Calendar) -> Date? {
+        if let shift = shifts.filter({ calendar.isDate($0, inSameDayAs: day) }).min() {
+            return shift.addingTimeInterval(-Double(max(0, preferences.leadMinutes)) * 60)
+        }
+        guard preferences.deliverOnDaysOff else { return nil }
+        let minute = calendar.isDateInWeekend(day) ? preferences.weekendMinute : preferences.weekdayMinute
+        let clamped = min(1439, max(0, minute))
+        return calendar.date(bySettingHour: clamped / 60, minute: clamped % 60, second: 0, of: day,
+                             matchingPolicy: .nextTime, repeatedTimePolicy: .first, direction: .forward)
+    }
+    public static func upcoming(after now: Date, shifts: [Date], preferences: SchedulingPreferences,
+                                calendar: Calendar, days: Int = 7) -> [Date] {
+        // Include tomorrow's early shift whose delivery falls tonight.
+        (0...days).compactMap { offset in
+            calendar.date(byAdding: .day, value: offset, to: now).flatMap {
+                delivery(on: $0, shifts: shifts, preferences: preferences, calendar: calendar)
+            }
+        }.filter { $0 > now }.sorted()
+    }
+    public static func conflicts(_ items: [BriefingItem]) -> Set<String> {
+        var result: Set<String> = []
+        let timed = items.filter { !$0.isAllDay && $0.date != nil && $0.end != nil }.sorted { $0.date! < $1.date! }
+        for (index, item) in timed.enumerated() {
+            for other in timed.dropFirst(index + 1) {
+                guard other.date! < item.end! else { break }
+                if other.end! > item.date! { result.insert(item.id); result.insert(other.id) }
+            }
+        }
+        return result
+    }
+}
+public enum GenerationPhase: Equatable, Sendable {
+    case idle, loading, complete, partial, failed
+    public static func result(for sections: [BriefingSection]) -> Self {
+        guard !sections.isEmpty else { return .failed }
+        let available = sections.filter { $0.state == .ready }.count
+        return available == sections.count ? .complete : .partial
+    }
+}
+public struct GenerationStateMachine: Sendable {
+    public private(set) var phase: GenerationPhase = .idle
+    public init() {}
+    @discardableResult public mutating func start() -> Bool {
+        guard phase != .loading else { return false }
+        phase = .loading; return true
+    }
+    public mutating func finish(sections: [BriefingSection]) { phase = .result(for: sections) }
+    public mutating func fail() { phase = .failed }
+    public mutating func cancel() { phase = .idle }
+}
+public struct NotificationPolicy: Codable, Equatable, Sendable {
+    public var quietStart: Int = 1320
+    public var quietEnd: Int = 180
+    public var quietEnabled: Bool = false
+    public init() {}
+    public func allows(_ date: Date, calendar: Calendar) -> Bool {
+        guard quietEnabled else { return true }
+        let c = calendar.dateComponents([.hour, .minute], from: date)
+        let minute = (c.hour ?? 0) * 60 + (c.minute ?? 0)
+        if quietStart == quietEnd { return false }
+        let quiet = quietStart < quietEnd ? (minute >= quietStart && minute < quietEnd) : (minute >= quietStart || minute < quietEnd)
+        return !quiet
+    }
+    public static func identifier(for date: Date) -> String { "briefing.\(Int(date.timeIntervalSince1970))" }
+}
+
+public enum CredentialScope {
+    /// Secrets belong to an HTTPS origin, never to an arbitrary replacement server.
+    public static func account(service: String, endpoint: URL) -> String? {
+        guard endpoint.scheme?.lowercased() == "https", let host = endpoint.host?.lowercased(),
+              !host.isEmpty, endpoint.user == nil, endpoint.password == nil else { return nil }
+        let port = endpoint.port ?? 443
+        return "\(service):https://\(host):\(port)"
+    }
+}
