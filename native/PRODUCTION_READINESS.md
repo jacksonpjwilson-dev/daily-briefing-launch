@@ -1,10 +1,34 @@
 # Daily Briefing production-readiness audit
 
+## P0 implementation update — November 13, 2026
+
+Implemented in the existing native app on `codex/native-daily-briefing`, continuing **draft PR #1**. The November 12 inventory and gap analysis below are a historical baseline; this checklist supersedes their P0 defect statuses. The SwiftUI design, provider boundaries and website are preserved. No remote service, new provider or dependency was added. **Final Apple CI passed:** [run 43488600351](https://github.com/jacksonpjwilson-dev/daily-briefing-launch/actions/runs/43488600351) on `dd2a880`: 47 tests, all four targets, Watch scheme and iPhone simulator startup/survival/screenshot. The local portable suite passed 42 tests; the unchanged website passed all 27 smoke checks.
+
+| Local hardening requirement | Implementation / remaining validation |
+| --- | --- |
+| [x] Correct target date | Explicit target work day, time zone, shift identity and scheduled preparation time are distinct from generation time. A next-day early shift selects tomorrow only after its prior-evening lead window opens; its schedule and daily weather use that date. |
+| [x] Overnight manual shifts | Interval-overlap filtering retains ongoing shifts after midnight. Overrides use the original start day, including shortened overrides that have already ended. |
+| [x] Meaningful revisions | Stable calendar/recurrence identity plus start/end, title/detail/location, link, source, all-day/shift and validity revisions; retrieval-only timestamp changes do not create false changes. |
+| [x] Disabled-source privacy | Enabled policy gates provider jobs and summary inputs. Settings/consent/permission changes cancel work, rotate source revisions and immediately rewrite the shared privacy gate. History search/detail, share, speech, widgets and Watch reads filter cached data; derived summaries are invalidated with their inputs. Originals remain in the private recovery archive. |
+| [x] Bounded refresh and persistence | Concurrent isolated provider jobs, per-provider deadlines, incremental same-row SwiftData checkpoints, interruption recovery, cancellation/late-result guards and background resubmission on completion/failure/cancellation. Summary runs after enabled fresh inputs within the remaining budget. Actual iOS execution time remains system-controlled. |
+| [x] Stable read/pin state | Versioned annotation ledger carries stable item pins through regeneration/relaunch and reads through unchanged content on the same work date. Meaningful content changes become unread; temporarily absent pins are retained. Legacy calendar provenance is reconciled only against an authorized selected EventKit source. |
+| [x] Versioned local recovery | Partial legacy preferences migrate with defaults and preserved originals; corrupt/future settings block autosave and expose explicit recovery. SwiftData V1→V2 migration and versioned snapshot payloads preserve old bytes; unreadable history remains visible, backups can be restored, and retention skips recovery/pinned rows. |
+| [x] Permission, failure and freshness handling | Resume revalidation, EventKit tasks refresh, canceled reminder fetches, true denied versus unconfigured states, source-isolated failure/offline/timeout reporting, cached/as-of labels and source-report validity in text/speech/companions. METAR/TAF failures are independent. Locked/unreadable credentials prevent the authenticated upload stage; token replacement does not delete a working token first. |
+| [x] Local notification hardening | Testable future/quiet-hour/deduplication planning; add replacements before removing obsolete app-owned requests; tapping a local reminder routes to Today. Signed notification-center behavior still needs device tests. |
+| [x] Regression coverage | Scheduling/overnight/DST/time zones, meaningful changes, annotation continuity, disabled/consent/permission cache redaction, corrupt/future data, deadline/cancellation/late-result behavior, notification planning and actual macOS SwiftData migration/checkpoint recovery tests. Exact latest results are tracked in [VALIDATION.md](VALIDATION.md). |
+| [ ] Signed physical-device acceptance | Follow [PHYSICAL_DEVICE_TESTING.md](PHYSICAL_DEVICE_TESTING.md). App Group/WeatherKit provisioning, real Keychain/notification/Watch behavior, Siri, accessibility and actual background expiration remain unverified here. P0 code completion is not device certification. |
+
+The privacy gate protects subsequent controllable reads and transfers. An already-rendered OS widget image or an offline Watch cannot be instantly recalled; signed-device/reconnection tests are a release gate. Legacy source data that cannot be verified is retained privately and hidden from exports, rather than guessed or deleted. Recovery copies deliberately override normal retention and may require user-directed cleanup later.
+
+**Next priorities:** configure signed Apple identities and run the device matrix; then P1 remote enrollment/scheduling/APNs/native ingestion, real email/sports and compatible AI/monitoring services, companion/runtime completion and TestFlight/release validation. CloudKit stays off until signed migration and two-device tests pass. Email/sports placeholders, exact-time remote preparation, section-aware speech, Watch delivery acknowledgement and production icons remain outside this local hardening phase.
+
+## Historical baseline — November 12, 2026
+
 Audit date: November 12, 2026. Repository: `jacksonpjwilson-dev/daily-briefing-launch`. Application code reviewed: `e8344e784f7434eb1b8962134fbbc5883f7b7c21`; later changes before this audit were documentation only. [Draft PR #1](https://github.com/jacksonpjwilson-dev/daily-briefing-launch/pull/1).
 
 **Assessment:** Daily Briefing has a real, compiling native foundation with implemented local features. Production readiness still requires reliability fixes, signed Apple configuration, real provider connections, a remote delivery service, and device testing. Green CI establishes compilation and startup; it does not establish end-to-end operation of every integration.
 
-This audit changes documentation only. Preserve the current SwiftUI screens, modular provider interfaces, SwiftData history, website, and assets. No major redesign or removal is proposed.
+The original audit changed documentation only. Its inventory below records the pre-P0 implementation; use the dated checklist above for the current local hardening status. The current SwiftUI screens, modular provider interfaces, SwiftData history, website and assets remain preserved.
 
 ## 1. Latest Apple CI, including credential security
 
